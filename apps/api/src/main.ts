@@ -1,46 +1,18 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ResponseInterceptor } from './common/interceptors/response.interceptor';
-import { GlobalExceptionFilter } from './common/filters/gobal-exception.filter';
+import { ConfigService } from '@nestjs/config';
+import { configureApp, configureSwagger } from './app.bootstrap';
+import { EnvironmentVariables } from './config/env.validation';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.setGlobalPrefix('api');
+  configureApp(app);
+  configureSwagger(app);
 
-  app.enableCors({
-    origin: process.env.WEB_ORIGIN ?? 'http://localhost:3000',
-    credentials: true,
-  });
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  );
-
-  app.useGlobalInterceptors(new ResponseInterceptor());
-  app.useGlobalFilters(new GlobalExceptionFilter());
-
-  if (process.env.NODE_ENV !== 'production') {
-    const swaggerConfig = new DocumentBuilder()
-      .setTitle('E-commerce API')
-      .setDescription('API documentation for the E-commerce Platform')
-      .setVersion('1.0')
-      .addBearerAuth()
-      .build();
-
-    const documentFactory = () =>
-      SwaggerModule.createDocument(app, swaggerConfig);
-
-    SwaggerModule.setup('api/docs', app, documentFactory);
-  }
-
-  const port = Number(process.env.PORT ?? 4000);
+  const configService =
+    app.get<ConfigService<EnvironmentVariables, true>>(ConfigService);
+  const port = configService.get('PORT', { infer: true });
 
   await app.listen(port);
 }
