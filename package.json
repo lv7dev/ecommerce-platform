@@ -8,8 +8,24 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
+    "lint:fix": "turbo run lint:fix",
     "test": "turbo run test",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "apps/api/**/*.{js,ts,mjs,cjs}": [
+      "eslint --config apps/api/eslint.config.mjs --fix",
+      "prettier --write"
+    ],
+    "apps/web/**/*.{js,jsx,ts,tsx,mjs,cjs}": [
+      "eslint --config apps/web/eslint.config.mjs --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml,css,scss}": "prettier --write",
+    "{prettier.config.mjs,*.config.js,*.config.mjs,*.config.ts}": "prettier --write"
   },
   "keywords": [],
   "author": "",
@@ -24,6 +40,11 @@
   "packageManager": "pnpm@11.24.0",
   "type": "module",
   "devDependencies": {
+    "eslint": "9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.3.0",
+    "prettier": "^3.9.6",
     "turbo": "^2.10.11"
   }
 }
