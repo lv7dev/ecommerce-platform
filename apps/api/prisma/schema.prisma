@@ -13,6 +13,22 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Locale {
+  vi
+  en
+}
+
+enum Currency {
+  VND
+  USD
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
 // ──────────────────────────────────────
 // User & Auth
 // ──────────────────────────────────────
@@ -25,4 +41,238 @@ model User {
   updatedAt    DateTime @updatedAt
 
   @@map("users")
+}
+
+// ──────────────────────────────────────
+// Category
+// ──────────────────────────────────────
+model Category {
+  id       String     @id @default(uuid())
+  parentId String?
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+
+  position Int     @default(0)
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  translations CategoryTranslation[]
+  products     ProductCategory[]
+
+  @@map("categories")
+}
+
+model CategoryTranslation {
+  id          String  @id @default(uuid())
+  categoryId  String
+  locale      Locale
+  name        String
+  slug        String
+  description String?
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([locale, slug])
+  @@unique([categoryId, locale])
+  @@map("category_translations")
+}
+
+// ──────────────────────────────────────
+// Product
+// ──────────────────────────────────────
+model Product {
+  id     String        @id @default(uuid())
+  brand  String?
+  status ProductStatus @default(DRAFT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  translations    ProductTranslation[]
+  categories      ProductCategory[]
+  options         ProductOption[]
+  variants        ProductVariant[]
+  searchDocuments ProductSearchDocument[]
+
+  @@map("products")
+}
+
+model ProductTranslation {
+  id               String  @id @default(uuid())
+  productId        String
+  locale           Locale
+  name             String
+  slug             String
+  shortDescription String?
+  description      String?
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([locale, slug])
+  @@unique([productId, locale])
+  @@map("product_translations")
+}
+
+// ──────────────────────────────────────
+// Product Category
+// ──────────────────────────────────────
+model ProductCategory {
+  productId  String
+  categoryId String
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+  @@map("product_categories")
+}
+
+// ──────────────────────────────────────
+// Option
+// ──────────────────────────────────────
+model Option {
+  id        String   @id @default(uuid())
+  code      String   @unique // color, size, storage, material
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  translations OptionTranslation[]
+  values       OptionValue[]
+  products     ProductOption[]
+
+  @@map("options")
+}
+
+model OptionTranslation {
+  id       String @id @default(uuid())
+  optionId String
+  locale   Locale
+  name     String
+
+  option Option @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@unique([optionId, locale])
+  @@map("option_translations")
+}
+
+// ──────────────────────────────────────
+// Option Value
+// ──────────────────────────────────────
+model OptionValue {
+  id       String @id @default(uuid())
+  optionId String
+  code     String
+  position Int    @default(0)
+
+  option Option @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  translations OptionValueTranslation[]
+  variants     VariantOptionValue[]
+
+  @@unique([optionId, code])
+  @@map("option_values")
+}
+
+model OptionValueTranslation {
+  id            String @id @default(uuid())
+  optionValueId String
+  locale        Locale
+  value         String
+
+  optionValue OptionValue @relation(fields: [optionValueId], references: [id], onDelete: Cascade)
+
+  @@unique([optionValueId, locale])
+  @@map("option_value_translations")
+}
+
+// ──────────────────────────────────────
+// Product Option
+// ──────────────────────────────────────
+model ProductOption {
+  productId String
+  optionId  String
+  position  Int    @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  option  Option  @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@id([productId, optionId])
+  @@map("product_options")
+}
+
+// ──────────────────────────────────────
+// Product Variant
+// ──────────────────────────────────────
+model ProductVariant {
+  id        String  @id @default(uuid())
+  productId String
+  sku       String  @unique
+  barcode   String?
+
+  imageUrl String?
+  stock    Int     @default(0)
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  optionValues VariantOptionValue[]
+  prices       ProductVariantPrice[]
+
+  @@map("product_variants")
+}
+
+// ──────────────────────────────────────
+// Variant Option Value
+// ──────────────────────────────────────
+model VariantOptionValue {
+  variantId     String
+  optionValueId String
+
+  variant     ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  optionValue OptionValue    @relation(fields: [optionValueId], references: [id], onDelete: Restrict)
+
+  @@id([variantId, optionValueId])
+  @@map("variant_option_values")
+}
+
+// ──────────────────────────────────────
+// Product Variant Price
+// ──────────────────────────────────────
+model ProductVariantPrice {
+  id        String   @id @default(uuid())
+  variantId String
+  currency  Currency
+
+  // VND: 250000 = 250,000 VND
+  // USD: 1299 = 12.99 USD
+  amountMinor          BigInt
+  compareAtAmountMinor BigInt?
+
+  isActive Boolean   @default(true)
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([variantId, currency])
+  @@map("product_variant_prices")
+}
+
+// Product Search Document
+model ProductSearchDocument {
+  productId         String
+  locale            Locale
+  content           String
+  normalizedContent String
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([productId, locale])
+  @@index([locale])
+  @@map("product_search_documents")
 }
