@@ -15,17 +15,6 @@
     "format:check": "prettier --check .",
     "prepare": "husky"
   },
-  "lint-staged": {
-    "apps/api/{src,test}/**/*.ts": [
-      "pnpm --dir apps/api exec eslint --fix",
-      "prettier --write"
-    ],
-    "apps/web/**/*.{js,jsx,ts,tsx}": [
-      "pnpm --dir apps/web exec eslint --fix",
-      "prettier --write"
-    ],
-    "*.{json,md,yml,yaml,css,scss,mjs,cjs}": "prettier --write"
-  },
   "keywords": [],
   "author": "",
   "license": "ISC",
