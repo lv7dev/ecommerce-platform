@@ -26,21 +26,23 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 import { Currency, Locale, ProductStatus } from '../../generated/prisma/client';
+import {
+  ProductVariantOptionValueSummaryEntity,
+  ProductVariantPriceSummaryEntity,
+} from '../../shared/entities';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { FindProductsQueryDto } from './dto/find-products-query.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import {
-  CategoryTranslationEntity,
-  ProductCategoryEntity,
+  ProductEmbeddedCategoryEntity,
+  ProductEmbeddedCategoryTranslationEntity,
+  ProductEmbeddedOptionEntity,
+  ProductEmbeddedOptionValueEntity,
+  ProductEmbeddedVariantEntity,
   ProductEntity,
   ProductListEntity,
-  ProductOptionEntity,
-  ProductOptionValueEntity,
   ProductTranslationEntity,
-  ProductVariantEntity,
-  ProductVariantOptionValueEntity,
-  ProductVariantPriceEntity,
 } from './entities/product.entity';
 
 const apiSuccessResponseSchema = (
@@ -85,13 +87,13 @@ const apiErrorResponseSchema = (statusCode: number, message: string) => ({
   ProductEntity,
   ProductListEntity,
   ProductTranslationEntity,
-  ProductCategoryEntity,
-  CategoryTranslationEntity,
-  ProductOptionEntity,
-  ProductOptionValueEntity,
-  ProductVariantEntity,
-  ProductVariantOptionValueEntity,
-  ProductVariantPriceEntity,
+  ProductEmbeddedCategoryEntity,
+  ProductEmbeddedCategoryTranslationEntity,
+  ProductEmbeddedOptionEntity,
+  ProductEmbeddedOptionValueEntity,
+  ProductEmbeddedVariantEntity,
+  ProductVariantOptionValueSummaryEntity,
+  ProductVariantPriceSummaryEntity,
 )
 @ApiBadRequestResponse(
   apiErrorResponseSchema(HttpStatus.BAD_REQUEST, 'Bad Request'),

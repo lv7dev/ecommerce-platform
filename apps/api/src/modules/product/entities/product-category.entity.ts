@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Locale } from '../../../generated/prisma/client';
 
-export class CategoryTranslationEntity {
+export class ProductEmbeddedCategoryTranslationEntity {
   @ApiProperty({ enum: Locale, example: Locale.vi })
   locale: Locale;
 
@@ -12,7 +12,7 @@ export class CategoryTranslationEntity {
   slug: string;
 }
 
-export class ProductCategoryEntity {
+export class ProductEmbeddedCategoryEntity {
   @ApiProperty({ example: '018f4d7b-7ef3-7b77-9f35-05a34f968d7e' })
   id: string;
 
@@ -27,6 +27,6 @@ export class ProductCategoryEntity {
   @ApiProperty({ example: true })
   isActive: boolean;
 
-  @ApiProperty({ type: [CategoryTranslationEntity] })
-  translations: CategoryTranslationEntity[];
+  @ApiProperty({ type: [ProductEmbeddedCategoryTranslationEntity] })
+  translations: ProductEmbeddedCategoryTranslationEntity[];
 }

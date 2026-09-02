@@ -9,7 +9,7 @@ import { CreateProductVariantPriceDto } from './dto/create-product-variant-price
 import { FindProductVariantPricesQueryDto } from './dto/find-product-variant-prices-query.dto';
 import { UpdateProductVariantPriceDto } from './dto/update-product-variant-price.dto';
 import {
-  ProductVariantPriceEntity,
+  ProductVariantPriceDetailEntity,
   ProductVariantPriceListEntity,
 } from './entities/product-variant-price.entity';
 import { handleProductVariantPricePrismaError } from './helpers/product-variant-price-prisma-error.helper';
@@ -22,7 +22,7 @@ export class ProductVariantPriceService {
   async create(
     variantId: string,
     createPriceDto: CreateProductVariantPriceDto,
-  ): Promise<ProductVariantPriceEntity> {
+  ): Promise<ProductVariantPriceDetailEntity> {
     try {
       const price = await this.prisma.productVariantPrice.create({
         data: {
@@ -67,14 +67,14 @@ export class ProductVariantPriceService {
     };
   }
 
-  async findOne(id: string): Promise<ProductVariantPriceEntity> {
+  async findOne(id: string): Promise<ProductVariantPriceDetailEntity> {
     return toProductVariantPriceEntity(await this.ensurePriceExists(id));
   }
 
   async update(
     id: string,
     updatePriceDto: UpdateProductVariantPriceDto,
-  ): Promise<ProductVariantPriceEntity> {
+  ): Promise<ProductVariantPriceDetailEntity> {
     await this.ensurePriceExists(id);
 
     try {
@@ -90,7 +90,7 @@ export class ProductVariantPriceService {
     }
   }
 
-  async remove(id: string): Promise<ProductVariantPriceEntity> {
+  async remove(id: string): Promise<ProductVariantPriceDetailEntity> {
     const price = await this.ensurePriceExists(id);
 
     try {

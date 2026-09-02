@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Currency } from '../../../generated/prisma/client';
 
-export class ProductVariantPriceVariantEntity {
+export class ProductVariantPriceVariantSummaryEntity {
   @ApiProperty({ example: '018f4d7b-7ef3-7b77-9f35-05a34f968d7e' })
   id: string;
 
@@ -12,7 +12,7 @@ export class ProductVariantPriceVariantEntity {
   sku: string;
 }
 
-export class ProductVariantPriceEntity {
+export class ProductVariantPriceDetailEntity {
   @ApiProperty({ example: '018f4d7b-7ef3-7b77-9f35-05a34f968d7e' })
   id: string;
 
@@ -37,13 +37,13 @@ export class ProductVariantPriceEntity {
   @ApiPropertyOptional({ example: '2026-12-31T23:59:59.999Z' })
   endsAt: string | null;
 
-  @ApiProperty({ type: ProductVariantPriceVariantEntity })
-  variant: ProductVariantPriceVariantEntity;
+  @ApiProperty({ type: ProductVariantPriceVariantSummaryEntity })
+  variant: ProductVariantPriceVariantSummaryEntity;
 }
 
 export class ProductVariantPriceListEntity {
-  @ApiProperty({ type: [ProductVariantPriceEntity] })
-  items: ProductVariantPriceEntity[];
+  @ApiProperty({ type: [ProductVariantPriceDetailEntity] })
+  items: ProductVariantPriceDetailEntity[];
 
   @ApiProperty({ example: 2 })
   total: number;

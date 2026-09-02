@@ -25,19 +25,19 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 import { Locale } from '../../generated/prisma/client';
+import { OptionValueTranslationEntity } from '../../shared/entities';
 import { CreateOptionValueDto } from './dto/create-option-value.dto';
 import { FindOptionValuesQueryDto } from './dto/find-option-values-query.dto';
 import { UpdateOptionValueDto } from './dto/update-option-value.dto';
 import {
-  OptionValueEntity,
+  OptionValueDetailEntity,
   OptionValueListEntity,
-  OptionValueOptionEntity,
-  OptionValueTranslationEntity,
+  OptionValueOptionSummaryEntity,
 } from './entities/option-value.entity';
 import { OptionValueService } from './option-value.service';
 
 const apiSuccessResponseSchema = (
-  model: typeof OptionValueEntity | typeof OptionValueListEntity,
+  model: typeof OptionValueDetailEntity | typeof OptionValueListEntity,
 ) => ({
   schema: {
     properties: {
@@ -71,9 +71,9 @@ const apiErrorResponseSchema = (statusCode: number, message: string) => ({
 
 @ApiTags('Option Values')
 @ApiExtraModels(
-  OptionValueEntity,
+  OptionValueDetailEntity,
   OptionValueListEntity,
-  OptionValueOptionEntity,
+  OptionValueOptionSummaryEntity,
   OptionValueTranslationEntity,
 )
 @ApiBadRequestResponse(
@@ -85,7 +85,7 @@ export class OptionValueController {
 
   @ApiOperation({ summary: 'Create an option value under an option' })
   @ApiParam({ name: 'optionId', description: 'Option UUID' })
-  @ApiCreatedResponse(apiSuccessResponseSchema(OptionValueEntity))
+  @ApiCreatedResponse(apiSuccessResponseSchema(OptionValueDetailEntity))
   @ApiConflictResponse(apiErrorResponseSchema(HttpStatus.CONFLICT, 'Conflict'))
   @Post('options/:optionId/values')
   create(
@@ -114,7 +114,7 @@ export class OptionValueController {
 
   @ApiOperation({ summary: 'Get an option value by ID' })
   @ApiParam({ name: 'id', description: 'Option value UUID' })
-  @ApiOkResponse(apiSuccessResponseSchema(OptionValueEntity))
+  @ApiOkResponse(apiSuccessResponseSchema(OptionValueDetailEntity))
   @ApiNotFoundResponse(
     apiErrorResponseSchema(HttpStatus.NOT_FOUND, 'Not Found'),
   )
@@ -125,7 +125,7 @@ export class OptionValueController {
 
   @ApiOperation({ summary: 'Update an option value and replace translations' })
   @ApiParam({ name: 'id', description: 'Option value UUID' })
-  @ApiOkResponse(apiSuccessResponseSchema(OptionValueEntity))
+  @ApiOkResponse(apiSuccessResponseSchema(OptionValueDetailEntity))
   @ApiConflictResponse(apiErrorResponseSchema(HttpStatus.CONFLICT, 'Conflict'))
   @ApiNotFoundResponse(
     apiErrorResponseSchema(HttpStatus.NOT_FOUND, 'Not Found'),
@@ -140,7 +140,7 @@ export class OptionValueController {
 
   @ApiOperation({ summary: 'Delete an option value' })
   @ApiParam({ name: 'id', description: 'Option value UUID' })
-  @ApiOkResponse(apiSuccessResponseSchema(OptionValueEntity))
+  @ApiOkResponse(apiSuccessResponseSchema(OptionValueDetailEntity))
   @ApiNotFoundResponse(
     apiErrorResponseSchema(HttpStatus.NOT_FOUND, 'Not Found'),
   )

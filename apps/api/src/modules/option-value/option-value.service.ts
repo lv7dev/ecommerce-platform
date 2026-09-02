@@ -9,7 +9,7 @@ import { CreateOptionValueDto } from './dto/create-option-value.dto';
 import { FindOptionValuesQueryDto } from './dto/find-option-values-query.dto';
 import { UpdateOptionValueDto } from './dto/update-option-value.dto';
 import {
-  OptionValueEntity,
+  OptionValueDetailEntity,
   OptionValueListEntity,
 } from './entities/option-value.entity';
 import { handleOptionValuePrismaError } from './helpers/option-value-prisma-error.helper';
@@ -23,7 +23,7 @@ export class OptionValueService {
   async create(
     optionId: string,
     createOptionValueDto: CreateOptionValueDto,
-  ): Promise<OptionValueEntity> {
+  ): Promise<OptionValueDetailEntity> {
     try {
       const optionValue = await this.prisma.optionValue.create({
         data: {
@@ -75,14 +75,14 @@ export class OptionValueService {
     };
   }
 
-  async findOne(id: string): Promise<OptionValueEntity> {
+  async findOne(id: string): Promise<OptionValueDetailEntity> {
     return toOptionValueEntity(await this.ensureOptionValueExists(id));
   }
 
   async update(
     id: string,
     updateOptionValueDto: UpdateOptionValueDto,
-  ): Promise<OptionValueEntity> {
+  ): Promise<OptionValueDetailEntity> {
     await this.ensureOptionValueExists(id);
     const productIds = await this.findProductIdsUsingOptionValue(id);
 
@@ -119,7 +119,7 @@ export class OptionValueService {
     }
   }
 
-  async remove(id: string): Promise<OptionValueEntity> {
+  async remove(id: string): Promise<OptionValueDetailEntity> {
     const optionValue = await this.ensureOptionValueExists(id);
 
     try {

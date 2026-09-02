@@ -1,9 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ProductStatus } from '../../../generated/prisma/client';
-import { ProductCategoryEntity } from './product-category.entity';
-import { ProductOptionEntity } from './product-option.entity';
+import { ProductEmbeddedCategoryEntity } from './product-category.entity';
+import { ProductEmbeddedOptionEntity } from './product-option.entity';
 import { ProductTranslationEntity } from './product-translation.entity';
-import { ProductVariantEntity } from './product-variant.entity';
+import { ProductEmbeddedVariantEntity } from './product-variant.entity';
 
 export class ProductEntity {
   @ApiProperty({ example: '018f4d7b-7ef3-7b77-9f35-05a34f968d7e' })
@@ -18,14 +18,14 @@ export class ProductEntity {
   @ApiProperty({ type: [ProductTranslationEntity] })
   translations: ProductTranslationEntity[];
 
-  @ApiProperty({ type: [ProductCategoryEntity] })
-  categories: ProductCategoryEntity[];
+  @ApiProperty({ type: [ProductEmbeddedCategoryEntity] })
+  categories: ProductEmbeddedCategoryEntity[];
 
-  @ApiProperty({ type: [ProductOptionEntity] })
-  options: ProductOptionEntity[];
+  @ApiProperty({ type: [ProductEmbeddedOptionEntity] })
+  options: ProductEmbeddedOptionEntity[];
 
-  @ApiProperty({ type: [ProductVariantEntity] })
-  variants: ProductVariantEntity[];
+  @ApiProperty({ type: [ProductEmbeddedVariantEntity] })
+  variants: ProductEmbeddedVariantEntity[];
 
   @ApiProperty({ example: '2026-09-01T00:00:00.000Z' })
   createdAt: string;
@@ -52,16 +52,12 @@ export class ProductListEntity {
 }
 
 export {
-  CategoryTranslationEntity,
-  ProductCategoryEntity,
+  ProductEmbeddedCategoryEntity,
+  ProductEmbeddedCategoryTranslationEntity,
 } from './product-category.entity';
 export {
-  ProductOptionEntity,
-  ProductOptionValueEntity,
+  ProductEmbeddedOptionEntity,
+  ProductEmbeddedOptionValueEntity,
 } from './product-option.entity';
 export { ProductTranslationEntity } from './product-translation.entity';
-export {
-  ProductVariantEntity,
-  ProductVariantOptionValueEntity,
-  ProductVariantPriceEntity,
-} from './product-variant.entity';
+export { ProductEmbeddedVariantEntity } from './product-variant.entity';

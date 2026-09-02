@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Locale } from '../../../generated/prisma/client';
+import { OptionValueTranslationEntity } from '../../../shared/entities';
 
 export class OptionTranslationEntity {
   @ApiProperty({ example: '018f4d7b-7ef3-7b77-9f35-05a34f968d7e' })
@@ -12,18 +13,7 @@ export class OptionTranslationEntity {
   name: string;
 }
 
-export class OptionValueTranslationEntity {
-  @ApiProperty({ example: '018f4d7b-7ef3-7b77-9f35-05a34f968d7e' })
-  id: string;
-
-  @ApiProperty({ enum: Locale, example: Locale.vi })
-  locale: Locale;
-
-  @ApiProperty({ example: 'Den' })
-  value: string;
-}
-
-export class OptionValueEntity {
+export class OptionEmbeddedValueEntity {
   @ApiProperty({ example: '018f4d7b-7ef3-7b77-9f35-05a34f968d7e' })
   id: string;
 
@@ -50,8 +40,8 @@ export class OptionEntity {
   @ApiProperty({ type: [OptionTranslationEntity] })
   translations: OptionTranslationEntity[];
 
-  @ApiProperty({ type: [OptionValueEntity] })
-  values: OptionValueEntity[];
+  @ApiProperty({ type: [OptionEmbeddedValueEntity] })
+  values: OptionEmbeddedValueEntity[];
 
   @ApiProperty({ example: 12 })
   productCount: number;

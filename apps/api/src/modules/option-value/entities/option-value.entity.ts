@@ -1,18 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Locale } from '../../../generated/prisma/client';
+import { OptionValueTranslationEntity } from '../../../shared/entities';
 
-export class OptionValueTranslationEntity {
-  @ApiProperty({ example: '018f4d7b-7ef3-7b77-9f35-05a34f968d7e' })
-  id: string;
-
-  @ApiProperty({ enum: Locale, example: Locale.vi })
-  locale: Locale;
-
-  @ApiProperty({ example: 'Den' })
-  value: string;
-}
-
-export class OptionValueOptionEntity {
+export class OptionValueOptionSummaryEntity {
   @ApiProperty({ example: '018f4d7b-7ef3-7b77-9f35-05a34f968d7e' })
   id: string;
 
@@ -31,7 +21,7 @@ export class OptionValueOptionEntity {
   }>;
 }
 
-export class OptionValueEntity {
+export class OptionValueDetailEntity {
   @ApiProperty({ example: '018f4d7b-7ef3-7b77-9f35-05a34f968d7e' })
   id: string;
 
@@ -44,8 +34,8 @@ export class OptionValueEntity {
   @ApiProperty({ example: 0 })
   position: number;
 
-  @ApiProperty({ type: OptionValueOptionEntity })
-  option: OptionValueOptionEntity;
+  @ApiProperty({ type: OptionValueOptionSummaryEntity })
+  option: OptionValueOptionSummaryEntity;
 
   @ApiProperty({ type: [OptionValueTranslationEntity] })
   translations: OptionValueTranslationEntity[];
@@ -55,8 +45,8 @@ export class OptionValueEntity {
 }
 
 export class OptionValueListEntity {
-  @ApiProperty({ type: [OptionValueEntity] })
-  items: OptionValueEntity[];
+  @ApiProperty({ type: [OptionValueDetailEntity] })
+  items: OptionValueDetailEntity[];
 
   @ApiProperty({ example: 8 })
   total: number;

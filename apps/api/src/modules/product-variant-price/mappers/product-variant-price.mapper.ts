@@ -1,9 +1,9 @@
 import { ProductVariantPriceWithRelations } from '../constants/product-variant-price.include';
-import { ProductVariantPriceEntity } from '../entities/product-variant-price.entity';
+import { ProductVariantPriceDetailEntity } from '../entities/product-variant-price.entity';
 
 export function toProductVariantPriceEntity(
   price: ProductVariantPriceWithRelations,
-): ProductVariantPriceEntity {
+): ProductVariantPriceDetailEntity {
   return {
     id: price.id,
     variantId: price.variantId,

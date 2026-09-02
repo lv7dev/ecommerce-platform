@@ -29,15 +29,16 @@ import { CreateProductVariantPriceDto } from './dto/create-product-variant-price
 import { FindProductVariantPricesQueryDto } from './dto/find-product-variant-prices-query.dto';
 import { UpdateProductVariantPriceDto } from './dto/update-product-variant-price.dto';
 import {
-  ProductVariantPriceEntity,
+  ProductVariantPriceDetailEntity,
   ProductVariantPriceListEntity,
-  ProductVariantPriceVariantEntity,
+  ProductVariantPriceVariantSummaryEntity,
 } from './entities/product-variant-price.entity';
 import { ProductVariantPriceService } from './product-variant-price.service';
 
 const apiSuccessResponseSchema = (
   model:
-    typeof ProductVariantPriceEntity | typeof ProductVariantPriceListEntity,
+    | typeof ProductVariantPriceDetailEntity
+    | typeof ProductVariantPriceListEntity,
 ) => ({
   schema: {
     properties: {
@@ -71,9 +72,9 @@ const apiErrorResponseSchema = (statusCode: number, message: string) => ({
 
 @ApiTags('Product Variant Prices')
 @ApiExtraModels(
-  ProductVariantPriceEntity,
+  ProductVariantPriceDetailEntity,
   ProductVariantPriceListEntity,
-  ProductVariantPriceVariantEntity,
+  ProductVariantPriceVariantSummaryEntity,
 )
 @ApiBadRequestResponse(
   apiErrorResponseSchema(HttpStatus.BAD_REQUEST, 'Bad Request'),
@@ -86,7 +87,7 @@ export class ProductVariantPriceController {
 
   @ApiOperation({ summary: 'Create a price under a product variant' })
   @ApiParam({ name: 'variantId', description: 'Product variant UUID' })
-  @ApiCreatedResponse(apiSuccessResponseSchema(ProductVariantPriceEntity))
+  @ApiCreatedResponse(apiSuccessResponseSchema(ProductVariantPriceDetailEntity))
   @ApiConflictResponse(apiErrorResponseSchema(HttpStatus.CONFLICT, 'Conflict'))
   @Post('product-variants/:variantId/prices')
   create(
@@ -119,7 +120,7 @@ export class ProductVariantPriceController {
 
   @ApiOperation({ summary: 'Get a product variant price by ID' })
   @ApiParam({ name: 'id', description: 'Product variant price UUID' })
-  @ApiOkResponse(apiSuccessResponseSchema(ProductVariantPriceEntity))
+  @ApiOkResponse(apiSuccessResponseSchema(ProductVariantPriceDetailEntity))
   @ApiNotFoundResponse(
     apiErrorResponseSchema(HttpStatus.NOT_FOUND, 'Not Found'),
   )
@@ -130,7 +131,7 @@ export class ProductVariantPriceController {
 
   @ApiOperation({ summary: 'Update a product variant price' })
   @ApiParam({ name: 'id', description: 'Product variant price UUID' })
-  @ApiOkResponse(apiSuccessResponseSchema(ProductVariantPriceEntity))
+  @ApiOkResponse(apiSuccessResponseSchema(ProductVariantPriceDetailEntity))
   @ApiConflictResponse(apiErrorResponseSchema(HttpStatus.CONFLICT, 'Conflict'))
   @ApiNotFoundResponse(
     apiErrorResponseSchema(HttpStatus.NOT_FOUND, 'Not Found'),
@@ -145,7 +146,7 @@ export class ProductVariantPriceController {
 
   @ApiOperation({ summary: 'Delete a product variant price' })
   @ApiParam({ name: 'id', description: 'Product variant price UUID' })
-  @ApiOkResponse(apiSuccessResponseSchema(ProductVariantPriceEntity))
+  @ApiOkResponse(apiSuccessResponseSchema(ProductVariantPriceDetailEntity))
   @ApiNotFoundResponse(
     apiErrorResponseSchema(HttpStatus.NOT_FOUND, 'Not Found'),
   )

@@ -25,15 +25,15 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 import { Locale } from '../../generated/prisma/client';
+import { OptionValueTranslationEntity } from '../../shared/entities';
 import { CreateOptionDto } from './dto/create-option.dto';
 import { FindOptionsQueryDto } from './dto/find-options-query.dto';
 import { UpdateOptionDto } from './dto/update-option.dto';
 import {
+  OptionEmbeddedValueEntity,
   OptionEntity,
   OptionListEntity,
   OptionTranslationEntity,
-  OptionValueEntity,
-  OptionValueTranslationEntity,
 } from './entities/option.entity';
 import { OptionService } from './option.service';
 
@@ -75,7 +75,7 @@ const apiErrorResponseSchema = (statusCode: number, message: string) => ({
   OptionEntity,
   OptionListEntity,
   OptionTranslationEntity,
-  OptionValueEntity,
+  OptionEmbeddedValueEntity,
   OptionValueTranslationEntity,
 )
 @ApiBadRequestResponse(

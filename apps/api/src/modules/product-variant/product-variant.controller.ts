@@ -25,14 +25,16 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 import { Currency } from '../../generated/prisma/client';
+import {
+  ProductVariantOptionValueSummaryEntity,
+  ProductVariantPriceSummaryEntity,
+} from '../../shared/entities';
 import { CreateProductVariantDto } from './dto/create-product-variant.dto';
 import { FindProductVariantsQueryDto } from './dto/find-product-variants-query.dto';
 import { UpdateProductVariantDto } from './dto/update-product-variant.dto';
 import {
   ProductVariantEntity,
   ProductVariantListEntity,
-  ProductVariantOptionValueEntity,
-  ProductVariantPriceEntity,
 } from './entities/product-variant.entity';
 import { ProductVariantService } from './product-variant.service';
 
@@ -73,8 +75,8 @@ const apiErrorResponseSchema = (statusCode: number, message: string) => ({
 @ApiExtraModels(
   ProductVariantEntity,
   ProductVariantListEntity,
-  ProductVariantOptionValueEntity,
-  ProductVariantPriceEntity,
+  ProductVariantOptionValueSummaryEntity,
+  ProductVariantPriceSummaryEntity,
 )
 @ApiBadRequestResponse(
   apiErrorResponseSchema(HttpStatus.BAD_REQUEST, 'Bad Request'),

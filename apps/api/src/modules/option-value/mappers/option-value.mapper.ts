@@ -1,9 +1,9 @@
 import { OptionValueWithRelations } from '../constants/option-value.include';
-import { OptionValueEntity } from '../entities/option-value.entity';
+import { OptionValueDetailEntity } from '../entities/option-value.entity';
 
 export function toOptionValueEntity(
   optionValue: OptionValueWithRelations,
-): OptionValueEntity {
+): OptionValueDetailEntity {
   return {
     id: optionValue.id,
     optionId: optionValue.optionId,
