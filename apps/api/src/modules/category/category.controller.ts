@@ -11,9 +11,11 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiExtraModels,
@@ -26,6 +28,9 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 import { Locale } from '../../generated/prisma/client';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { AuthGuard } from '../auth/guards/auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { FindCategoriesQueryDto } from './dto/find-categories-query.dto';
@@ -87,6 +92,9 @@ export class CategoryController {
   @ApiOperation({ summary: 'Create a category with translations' })
   @ApiCreatedResponse(apiSuccessResponseSchema(CategoryEntity))
   @ApiConflictResponse(apiErrorResponseSchema(HttpStatus.CONFLICT, 'Conflict'))
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('category:create')
   @Post()
   create(@Body() createCategoryDto: CreateCategoryDto) {
     return this.categoryService.create(createCategoryDto);
@@ -145,6 +153,9 @@ export class CategoryController {
   @ApiNotFoundResponse(
     apiErrorResponseSchema(HttpStatus.NOT_FOUND, 'Not Found'),
   )
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('category:update')
   @Patch(':id')
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -159,6 +170,9 @@ export class CategoryController {
   @ApiNotFoundResponse(
     apiErrorResponseSchema(HttpStatus.NOT_FOUND, 'Not Found'),
   )
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('category:delete')
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   remove(@Param('id', ParseUUIDPipe) id: string) {

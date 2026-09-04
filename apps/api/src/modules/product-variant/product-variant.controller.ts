@@ -10,9 +10,11 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiExtraModels,
@@ -29,6 +31,9 @@ import {
   ProductVariantOptionValueSummaryEntity,
   ProductVariantPriceSummaryEntity,
 } from '../../shared/entities';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { AuthGuard } from '../auth/guards/auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { CreateProductVariantDto } from './dto/create-product-variant.dto';
 import { FindProductVariantsQueryDto } from './dto/find-product-variants-query.dto';
 import { UpdateProductVariantDto } from './dto/update-product-variant.dto';
@@ -89,6 +94,9 @@ export class ProductVariantController {
   @ApiParam({ name: 'productId', description: 'Product UUID' })
   @ApiCreatedResponse(apiSuccessResponseSchema(ProductVariantEntity))
   @ApiConflictResponse(apiErrorResponseSchema(HttpStatus.CONFLICT, 'Conflict'))
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('product:update')
   @Post('products/:productId/variants')
   create(
     @Param('productId', ParseUUIDPipe) productId: string,
@@ -143,6 +151,9 @@ export class ProductVariantController {
   @ApiNotFoundResponse(
     apiErrorResponseSchema(HttpStatus.NOT_FOUND, 'Not Found'),
   )
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('product:update')
   @Patch('product-variants/:id')
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -157,6 +168,9 @@ export class ProductVariantController {
   @ApiNotFoundResponse(
     apiErrorResponseSchema(HttpStatus.NOT_FOUND, 'Not Found'),
   )
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('product:delete')
   @Delete('product-variants/:id')
   @HttpCode(HttpStatus.OK)
   remove(@Param('id', ParseUUIDPipe) id: string) {

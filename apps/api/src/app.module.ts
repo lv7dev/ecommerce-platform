@@ -10,6 +10,9 @@ import { OptionModule } from './modules/option/option.module';
 import { OptionValueModule } from './modules/option-value/option-value.module';
 import { ProductVariantModule } from './modules/product-variant/product-variant.module';
 import { ProductVariantPriceModule } from './modules/product-variant-price/product-variant-price.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UserModule } from './modules/user/user.module';
+import { AuditLogModule } from './modules/audit-log/audit-log.module';
 
 @Module({
   imports: [
@@ -21,9 +24,12 @@ import { ProductVariantPriceModule } from './modules/product-variant-price/produ
     CategoryModule,
     OptionModule,
     OptionValueModule,
+    AuthModule,
+    UserModule,
     ProductModule,
     ProductVariantModule,
     ProductVariantPriceModule,
+    AuditLogModule,
   ],
   controllers: [AppController],
   providers: [AppService],

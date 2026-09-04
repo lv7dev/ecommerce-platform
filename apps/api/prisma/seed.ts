@@ -1,11 +1,16 @@
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { createHash, scrypt as scryptCallback } from 'node:crypto';
+import { promisify } from 'node:util';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 import {
   Currency,
   Locale,
   ProductStatus,
+  UserStatus,
 } from '../src/generated/prisma/enums.js';
+
+const scrypt = promisify(scryptCallback);
 
 type Translation = {
   vi: string;
@@ -54,6 +59,12 @@ type ProductSeed = {
   kind: VariantKind;
   priceVnd: number;
   priceUsd: number;
+};
+
+type DemoUserSeed = {
+  email: string;
+  name: string;
+  roleCode: 'ADMIN' | 'STAFF' | 'CUSTOMER';
 };
 
 const connectionString = process.env.DATABASE_URL;
@@ -856,6 +867,519 @@ const products: ProductSeed[] = [
   },
 ];
 
+const systemRoles = [
+  {
+    id: 'role_admin',
+    code: 'ADMIN',
+    name: 'Administrator',
+    description: 'Full back-office access.',
+  },
+  {
+    id: 'role_staff',
+    code: 'STAFF',
+    name: 'Staff',
+    description: 'Operational back-office access.',
+  },
+  {
+    id: 'role_customer',
+    code: 'CUSTOMER',
+    name: 'Customer',
+    description: 'Default shopper access.',
+  },
+] as const;
+
+const systemPermissions = [
+  ['permission_auth_me', 'auth:me', 'Read own profile'],
+  ['permission_cart_manage_own', 'cart:manage_own', 'Manage own cart'],
+  ['permission_order_create_own', 'order:create_own', 'Create own order'],
+  ['permission_order_read_own', 'order:read_own', 'Read own orders'],
+  ['permission_category_create', 'category:create', 'Create categories'],
+  ['permission_category_update', 'category:update', 'Update categories'],
+  ['permission_category_delete', 'category:delete', 'Delete categories'],
+  ['permission_option_create', 'option:create', 'Create options'],
+  ['permission_option_update', 'option:update', 'Update options'],
+  ['permission_option_delete', 'option:delete', 'Delete options'],
+  ['permission_product_create', 'product:create', 'Create products'],
+  ['permission_product_update', 'product:update', 'Update products'],
+  ['permission_product_delete', 'product:delete', 'Delete products'],
+  ['permission_order_read', 'order:read', 'Read orders'],
+  [
+    'permission_order_update_status',
+    'order:update_status',
+    'Update order status',
+  ],
+  ['permission_user_read', 'user:read', 'Read users'],
+  ['permission_user_update', 'user:update', 'Update users'],
+  ['permission_user_manage_roles', 'user:manage_roles', 'Manage user roles'],
+  ['permission_user_suspend', 'user:suspend', 'Suspend users'],
+  ['permission_user_ban', 'user:ban', 'Ban users'],
+  ['permission_session_revoke', 'session:revoke', 'Revoke sessions'],
+  ['permission_audit_read', 'audit:read', 'Read audit logs'],
+] as const;
+
+const rolePermissionCodes: Record<string, string[]> = {
+  ADMIN: systemPermissions.map((permission) => permission[1]),
+  STAFF: [
+    'order:read',
+    'order:update_status',
+    'category:create',
+    'category:update',
+    'option:create',
+    'option:update',
+    'product:create',
+    'product:update',
+    'user:read',
+  ],
+  CUSTOMER: [
+    'auth:me',
+    'cart:manage_own',
+    'order:create_own',
+    'order:read_own',
+  ],
+};
+
+const roleTranslations: Record<
+  string,
+  Record<Locale, { name: string; description: string }>
+> = {
+  ADMIN: {
+    [Locale.en]: {
+      name: 'Administrator',
+      description: 'Full back-office access.',
+    },
+    [Locale.vi]: {
+      name: 'Quản trị viên',
+      description: 'Toàn quyền truy cập khu vực quản trị.',
+    },
+  },
+  STAFF: {
+    [Locale.en]: {
+      name: 'Staff',
+      description: 'Operational back-office access.',
+    },
+    [Locale.vi]: {
+      name: 'Nhân viên',
+      description: 'Quyền vận hành khu vực quản trị.',
+    },
+  },
+  CUSTOMER: {
+    [Locale.en]: {
+      name: 'Customer',
+      description: 'Default shopper access.',
+    },
+    [Locale.vi]: {
+      name: 'Khách hàng',
+      description: 'Quyền mua sắm mặc định.',
+    },
+  },
+};
+
+const permissionTranslations: Record<
+  string,
+  Record<Locale, { name: string; description: string }>
+> = {
+  'auth:me': {
+    [Locale.en]: {
+      name: 'Read own profile',
+      description: 'View the authenticated user profile.',
+    },
+    [Locale.vi]: {
+      name: 'Xem hồ sơ cá nhân',
+      description: 'Xem hồ sơ của người dùng đang đăng nhập.',
+    },
+  },
+  'cart:manage_own': {
+    [Locale.en]: {
+      name: 'Manage own cart',
+      description: 'Create and update the authenticated user cart.',
+    },
+    [Locale.vi]: {
+      name: 'Quản lý giỏ hàng cá nhân',
+      description: 'Tạo và cập nhật giỏ hàng của người dùng đang đăng nhập.',
+    },
+  },
+  'order:create_own': {
+    [Locale.en]: {
+      name: 'Create own order',
+      description: 'Create orders for the authenticated user.',
+    },
+    [Locale.vi]: {
+      name: 'Tạo đơn hàng cá nhân',
+      description: 'Tạo đơn hàng cho người dùng đang đăng nhập.',
+    },
+  },
+  'order:read_own': {
+    [Locale.en]: {
+      name: 'Read own orders',
+      description: 'View orders owned by the authenticated user.',
+    },
+    [Locale.vi]: {
+      name: 'Xem đơn hàng cá nhân',
+      description: 'Xem đơn hàng thuộc về người dùng đang đăng nhập.',
+    },
+  },
+  'category:create': {
+    [Locale.en]: {
+      name: 'Create categories',
+      description: 'Create catalog categories.',
+    },
+    [Locale.vi]: {
+      name: 'Tạo danh mục',
+      description: 'Tạo danh mục sản phẩm.',
+    },
+  },
+  'category:update': {
+    [Locale.en]: {
+      name: 'Update categories',
+      description: 'Update catalog categories.',
+    },
+    [Locale.vi]: {
+      name: 'Cập nhật danh mục',
+      description: 'Cập nhật danh mục sản phẩm.',
+    },
+  },
+  'category:delete': {
+    [Locale.en]: {
+      name: 'Delete categories',
+      description: 'Delete catalog categories.',
+    },
+    [Locale.vi]: {
+      name: 'Xóa danh mục',
+      description: 'Xóa danh mục sản phẩm.',
+    },
+  },
+  'option:create': {
+    [Locale.en]: {
+      name: 'Create options',
+      description: 'Create catalog options.',
+    },
+    [Locale.vi]: {
+      name: 'Tạo thuộc tính',
+      description: 'Tạo thuộc tính sản phẩm.',
+    },
+  },
+  'option:update': {
+    [Locale.en]: {
+      name: 'Update options',
+      description: 'Update catalog options and option values.',
+    },
+    [Locale.vi]: {
+      name: 'Cập nhật thuộc tính',
+      description: 'Cập nhật thuộc tính và giá trị thuộc tính sản phẩm.',
+    },
+  },
+  'option:delete': {
+    [Locale.en]: {
+      name: 'Delete options',
+      description: 'Delete catalog options and option values.',
+    },
+    [Locale.vi]: {
+      name: 'Xóa thuộc tính',
+      description: 'Xóa thuộc tính và giá trị thuộc tính sản phẩm.',
+    },
+  },
+  'product:create': {
+    [Locale.en]: {
+      name: 'Create products',
+      description: 'Create catalog products.',
+    },
+    [Locale.vi]: {
+      name: 'Tạo sản phẩm',
+      description: 'Tạo sản phẩm trong catalog.',
+    },
+  },
+  'product:update': {
+    [Locale.en]: {
+      name: 'Update products',
+      description: 'Update catalog products.',
+    },
+    [Locale.vi]: {
+      name: 'Cập nhật sản phẩm',
+      description: 'Cập nhật sản phẩm trong catalog.',
+    },
+  },
+  'product:delete': {
+    [Locale.en]: {
+      name: 'Delete products',
+      description: 'Delete catalog products.',
+    },
+    [Locale.vi]: {
+      name: 'Xóa sản phẩm',
+      description: 'Xóa sản phẩm trong catalog.',
+    },
+  },
+  'order:read': {
+    [Locale.en]: {
+      name: 'Read orders',
+      description: 'View customer orders.',
+    },
+    [Locale.vi]: {
+      name: 'Xem đơn hàng',
+      description: 'Xem đơn hàng của khách hàng.',
+    },
+  },
+  'order:update_status': {
+    [Locale.en]: {
+      name: 'Update order status',
+      description: 'Change order fulfillment and payment status.',
+    },
+    [Locale.vi]: {
+      name: 'Cập nhật trạng thái đơn hàng',
+      description: 'Thay đổi trạng thái thanh toán và xử lý đơn hàng.',
+    },
+  },
+  'user:read': {
+    [Locale.en]: {
+      name: 'Read users',
+      description: 'View user accounts.',
+    },
+    [Locale.vi]: {
+      name: 'Xem người dùng',
+      description: 'Xem tài khoản người dùng.',
+    },
+  },
+  'user:update': {
+    [Locale.en]: {
+      name: 'Update users',
+      description: 'Update user accounts.',
+    },
+    [Locale.vi]: {
+      name: 'Cập nhật người dùng',
+      description: 'Cập nhật tài khoản người dùng.',
+    },
+  },
+  'user:manage_roles': {
+    [Locale.en]: {
+      name: 'Manage user roles',
+      description: 'Assign and remove user roles.',
+    },
+    [Locale.vi]: {
+      name: 'Quản lý vai trò người dùng',
+      description: 'Gán và gỡ vai trò của người dùng.',
+    },
+  },
+  'user:suspend': {
+    [Locale.en]: {
+      name: 'Suspend users',
+      description: 'Temporarily block user access.',
+    },
+    [Locale.vi]: {
+      name: 'Tạm khóa người dùng',
+      description: 'Tạm thời chặn quyền truy cập của người dùng.',
+    },
+  },
+  'user:ban': {
+    [Locale.en]: {
+      name: 'Ban users',
+      description: 'Permanently block user access.',
+    },
+    [Locale.vi]: {
+      name: 'Cấm người dùng',
+      description: 'Chặn vĩnh viễn quyền truy cập của người dùng.',
+    },
+  },
+  'session:revoke': {
+    [Locale.en]: {
+      name: 'Revoke sessions',
+      description: 'Force logout user sessions.',
+    },
+    [Locale.vi]: {
+      name: 'Thu hồi phiên đăng nhập',
+      description: 'Buộc đăng xuất các phiên của người dùng.',
+    },
+  },
+  'audit:read': {
+    [Locale.en]: {
+      name: 'Read audit logs',
+      description: 'View security and administration audit logs.',
+    },
+    [Locale.vi]: {
+      name: 'Xem nhật ký kiểm toán',
+      description: 'Xem nhật ký bảo mật và quản trị hệ thống.',
+    },
+  },
+};
+
+const demoUsers: DemoUserSeed[] = [
+  {
+    email: 'admin@example.com',
+    name: 'Demo Admin',
+    roleCode: 'ADMIN',
+  },
+  {
+    email: 'staff@example.com',
+    name: 'Demo Staff',
+    roleCode: 'STAFF',
+  },
+  {
+    email: 'customer@example.com',
+    name: 'Demo Customer',
+    roleCode: 'CUSTOMER',
+  },
+];
+
+async function seedSystemAccessData(): Promise<void> {
+  for (const role of systemRoles) {
+    await prisma.role.upsert({
+      where: { code: role.code },
+      update: {
+        name: role.name,
+        description: role.description,
+        isSystem: true,
+      },
+      create: {
+        ...role,
+        isSystem: true,
+      },
+    });
+  }
+
+  for (const [id, code, name] of systemPermissions) {
+    await prisma.permission.upsert({
+      where: { code },
+      update: { name },
+      create: { id, code, name },
+    });
+  }
+
+  const roles = await prisma.role.findMany({
+    select: { id: true, code: true },
+  });
+  const permissions = await prisma.permission.findMany({
+    select: { id: true, code: true },
+  });
+  const roleIdByCode = new Map(roles.map((role) => [role.code, role.id]));
+  const permissionIdByCode = new Map(
+    permissions.map((permission) => [permission.code, permission.id]),
+  );
+
+  await prisma.rolePermission.createMany({
+    data: Object.entries(rolePermissionCodes).flatMap(
+      ([roleCode, permissionCodes]) =>
+        permissionCodes
+          .map((permissionCode) => ({
+            roleId: roleIdByCode.get(roleCode),
+            permissionId: permissionIdByCode.get(permissionCode),
+          }))
+          .filter(
+            (
+              item,
+            ): item is {
+              roleId: string;
+              permissionId: string;
+            } => Boolean(item.roleId && item.permissionId),
+          ),
+    ),
+    skipDuplicates: true,
+  });
+
+  for (const role of roles) {
+    const translations = roleTranslations[role.code];
+
+    if (!translations) {
+      continue;
+    }
+
+    for (const [locale, translation] of Object.entries(translations) as Array<
+      [Locale, { name: string; description: string }]
+    >) {
+      await prisma.roleTranslation.upsert({
+        where: {
+          roleId_locale: {
+            roleId: role.id,
+            locale,
+          },
+        },
+        update: translation,
+        create: {
+          roleId: role.id,
+          locale,
+          ...translation,
+        },
+      });
+    }
+  }
+
+  for (const permission of permissions) {
+    const translations = permissionTranslations[permission.code];
+
+    if (!translations) {
+      continue;
+    }
+
+    for (const [locale, translation] of Object.entries(translations) as Array<
+      [Locale, { name: string; description: string }]
+    >) {
+      await prisma.permissionTranslation.upsert({
+        where: {
+          permissionId_locale: {
+            permissionId: permission.id,
+            locale,
+          },
+        },
+        update: translation,
+        create: {
+          permissionId: permission.id,
+          locale,
+          ...translation,
+        },
+      });
+    }
+  }
+}
+
+async function seedDemoUsers(): Promise<void> {
+  const passwordHash = await hashSeedPassword('Password123!');
+
+  for (const user of demoUsers) {
+    await prisma.user.upsert({
+      where: { email: user.email },
+      update: {
+        name: user.name,
+        passwordHash,
+        status: UserStatus.ACTIVE,
+        emailVerifiedAt: new Date(),
+        roles: {
+          deleteMany: {},
+          create: {
+            role: {
+              connect: {
+                code: user.roleCode,
+              },
+            },
+          },
+        },
+      },
+      create: {
+        email: user.email,
+        name: user.name,
+        passwordHash,
+        status: UserStatus.ACTIVE,
+        emailVerifiedAt: new Date(),
+        roles: {
+          create: {
+            role: {
+              connect: {
+                code: user.roleCode,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+}
+
+async function hashSeedPassword(password: string): Promise<string> {
+  const salt = createHash('sha256')
+    .update('ecommerce-platform-demo-users')
+    .digest('base64url')
+    .slice(0, 22);
+  const derivedKey = (await scrypt(password, salt, 64)) as Buffer;
+
+  return `scrypt$${salt}$${derivedKey.toString('base64url')}`;
+}
+
 function normalizeSearchText(value: string): string {
   return value
     .normalize('NFD')
@@ -1160,6 +1684,8 @@ async function seedProducts(
 }
 
 async function main(): Promise<void> {
+  await seedSystemAccessData();
+  await seedDemoUsers();
   await clearCatalogData();
 
   const categoryIds = await seedCategories();
@@ -1170,6 +1696,7 @@ async function main(): Promise<void> {
   console.log(`Seeded ${categories.length} categories.`);
   console.log(`Seeded ${options.length} options.`);
   console.log(`Seeded ${products.length} products with variants and prices.`);
+  console.log(`Seeded ${demoUsers.length} demo users.`);
 }
 
 main()

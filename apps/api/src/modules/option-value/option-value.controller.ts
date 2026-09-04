@@ -10,9 +10,11 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiExtraModels,
@@ -26,6 +28,9 @@ import {
 } from '@nestjs/swagger';
 import { Locale } from '../../generated/prisma/client';
 import { OptionValueTranslationEntity } from '../../shared/entities';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { AuthGuard } from '../auth/guards/auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { CreateOptionValueDto } from './dto/create-option-value.dto';
 import { FindOptionValuesQueryDto } from './dto/find-option-values-query.dto';
 import { UpdateOptionValueDto } from './dto/update-option-value.dto';
@@ -87,6 +92,9 @@ export class OptionValueController {
   @ApiParam({ name: 'optionId', description: 'Option UUID' })
   @ApiCreatedResponse(apiSuccessResponseSchema(OptionValueDetailEntity))
   @ApiConflictResponse(apiErrorResponseSchema(HttpStatus.CONFLICT, 'Conflict'))
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('option:update')
   @Post('options/:optionId/values')
   create(
     @Param('optionId', ParseUUIDPipe) optionId: string,
@@ -130,6 +138,9 @@ export class OptionValueController {
   @ApiNotFoundResponse(
     apiErrorResponseSchema(HttpStatus.NOT_FOUND, 'Not Found'),
   )
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('option:update')
   @Patch('option-values/:id')
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -144,6 +155,9 @@ export class OptionValueController {
   @ApiNotFoundResponse(
     apiErrorResponseSchema(HttpStatus.NOT_FOUND, 'Not Found'),
   )
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('option:delete')
   @Delete('option-values/:id')
   @HttpCode(HttpStatus.OK)
   remove(@Param('id', ParseUUIDPipe) id: string) {

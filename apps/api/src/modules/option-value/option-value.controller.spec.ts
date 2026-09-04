@@ -1,4 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { AuthGuard } from '../auth/guards/auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { OptionValueController } from './option-value.controller';
 import { OptionValueService } from './option-value.service';
 
@@ -21,7 +23,12 @@ describe('OptionValueController', () => {
           useValue: optionValueServiceMock,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({ canActivate: jest.fn(() => true) })
+      .overrideGuard(PermissionsGuard)
+      .useValue({ canActivate: jest.fn(() => true) })
+      .compile();
 
     controller = module.get<OptionValueController>(OptionValueController);
   });

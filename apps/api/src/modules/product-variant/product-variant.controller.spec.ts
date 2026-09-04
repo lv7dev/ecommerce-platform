@@ -1,4 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { AuthGuard } from '../auth/guards/auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { ProductVariantController } from './product-variant.controller';
 import { ProductVariantService } from './product-variant.service';
 
@@ -21,7 +23,12 @@ describe('ProductVariantController', () => {
           useValue: productVariantServiceMock,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({ canActivate: jest.fn(() => true) })
+      .overrideGuard(PermissionsGuard)
+      .useValue({ canActivate: jest.fn(() => true) })
+      .compile();
 
     controller = module.get<ProductVariantController>(ProductVariantController);
   });

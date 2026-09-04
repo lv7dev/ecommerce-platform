@@ -10,9 +10,11 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiExtraModels,
@@ -25,6 +27,9 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 import { Currency } from '../../generated/prisma/client';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { AuthGuard } from '../auth/guards/auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { CreateProductVariantPriceDto } from './dto/create-product-variant-price.dto';
 import { FindProductVariantPricesQueryDto } from './dto/find-product-variant-prices-query.dto';
 import { UpdateProductVariantPriceDto } from './dto/update-product-variant-price.dto';
@@ -89,6 +94,9 @@ export class ProductVariantPriceController {
   @ApiParam({ name: 'variantId', description: 'Product variant UUID' })
   @ApiCreatedResponse(apiSuccessResponseSchema(ProductVariantPriceDetailEntity))
   @ApiConflictResponse(apiErrorResponseSchema(HttpStatus.CONFLICT, 'Conflict'))
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('product:update')
   @Post('product-variants/:variantId/prices')
   create(
     @Param('variantId', ParseUUIDPipe) variantId: string,
@@ -136,6 +144,9 @@ export class ProductVariantPriceController {
   @ApiNotFoundResponse(
     apiErrorResponseSchema(HttpStatus.NOT_FOUND, 'Not Found'),
   )
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('product:update')
   @Patch('product-variant-prices/:id')
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -150,6 +161,9 @@ export class ProductVariantPriceController {
   @ApiNotFoundResponse(
     apiErrorResponseSchema(HttpStatus.NOT_FOUND, 'Not Found'),
   )
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('product:delete')
   @Delete('product-variant-prices/:id')
   @HttpCode(HttpStatus.OK)
   remove(@Param('id', ParseUUIDPipe) id: string) {
