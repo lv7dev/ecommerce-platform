@@ -2,8 +2,10 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserEntity } from '../../user/entities/user.entity';
 
 export class AuthEmailVerificationEntity {
-  @ApiProperty({ example: 'email-verification-token-for-local-testing' })
-  verificationToken: string;
+  @ApiPropertyOptional({
+    example: 'email-verification-token-for-local-testing',
+  })
+  verificationToken?: string;
 
   @ApiProperty({ example: '2026-09-04T00:00:00.000Z' })
   expiresAt: string;

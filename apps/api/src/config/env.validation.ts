@@ -1,16 +1,23 @@
 const nodeEnvironments = ['development', 'test', 'production'] as const;
+const mailProviders = ['console', 'resend'] as const;
 
 export type NodeEnvironment = (typeof nodeEnvironments)[number];
+export type MailProvider = (typeof mailProviders)[number];
 
 export interface EnvironmentVariables {
+  APP_WEB_URL: string;
   DATABASE_URL: string;
+  EMAIL_VERIFICATION_TOKEN_TTL_SECONDS: number;
   JWT_ACCESS_SECRET: string;
   JWT_ACCESS_TOKEN_TTL_SECONDS: number;
   JWT_REFRESH_TOKEN_TTL_SECONDS: number;
+  MAIL_FROM: string;
+  MAIL_PROVIDER: MailProvider;
   PASSWORD_RESET_TOKEN_TTL_SECONDS: number;
-  EMAIL_VERIFICATION_TOKEN_TTL_SECONDS: number;
   NODE_ENV: NodeEnvironment;
   PORT: number;
+  RESEND_API_KEY?: string;
+  SEND_AUTH_TOKENS_IN_RESPONSE: boolean;
   WEB_ORIGIN: string;
 }
 
@@ -45,17 +52,42 @@ export function validateEnvironment(
     config.WEB_ORIGIN,
     'http://localhost:3000',
   );
+  const appWebUrl = getOptionalString(config.APP_WEB_URL, webOrigin);
+  const mailProvider = getMailProvider(config.MAIL_PROVIDER);
+  const resendApiKey = getOptionalString(config.RESEND_API_KEY, '');
+  const mailFrom = getOptionalString(
+    config.MAIL_FROM,
+    'E-commerce <onboarding@resend.dev>',
+  );
+  const sendAuthTokensInResponse = getBoolean(
+    config.SEND_AUTH_TOKENS_IN_RESPONSE,
+    nodeEnv !== 'production',
+    'SEND_AUTH_TOKENS_IN_RESPONSE',
+  );
+
+  if (mailProvider === 'resend' && !resendApiKey) {
+    throw new Error('RESEND_API_KEY is required when MAIL_PROVIDER=resend');
+  }
+
+  if (nodeEnv === 'production' && mailProvider === 'console') {
+    throw new Error('MAIL_PROVIDER=resend is required in production');
+  }
 
   return {
     ...config,
+    APP_WEB_URL: appWebUrl,
     DATABASE_URL: databaseUrl,
+    EMAIL_VERIFICATION_TOKEN_TTL_SECONDS: emailVerificationTokenTtlSeconds,
     JWT_ACCESS_SECRET: jwtAccessSecret,
     JWT_ACCESS_TOKEN_TTL_SECONDS: jwtAccessTokenTtlSeconds,
     JWT_REFRESH_TOKEN_TTL_SECONDS: jwtRefreshTokenTtlSeconds,
+    MAIL_FROM: mailFrom,
+    MAIL_PROVIDER: mailProvider,
     PASSWORD_RESET_TOKEN_TTL_SECONDS: passwordResetTokenTtlSeconds,
-    EMAIL_VERIFICATION_TOKEN_TTL_SECONDS: emailVerificationTokenTtlSeconds,
     NODE_ENV: nodeEnv,
     PORT: port,
+    RESEND_API_KEY: resendApiKey || undefined,
+    SEND_AUTH_TOKENS_IN_RESPONSE: sendAuthTokensInResponse,
     WEB_ORIGIN: webOrigin,
   };
 }
@@ -121,6 +153,46 @@ function getNodeEnvironment(value: unknown): NodeEnvironment {
   }
 
   throw new Error(`NODE_ENV must be one of: ${nodeEnvironments.join(', ')}`);
+}
+
+function getMailProvider(value: unknown): MailProvider {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return 'console';
+  }
+
+  if (mailProviders.includes(value as MailProvider)) {
+    return value as MailProvider;
+  }
+
+  throw new Error(`MAIL_PROVIDER must be one of: ${mailProviders.join(', ')}`);
+}
+
+function getBoolean(
+  value: unknown,
+  fallback: boolean,
+  key: keyof EnvironmentVariables,
+): boolean {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalizedValue = value.trim().toLowerCase();
+
+    if (['true', '1', 'yes'].includes(normalizedValue)) {
+      return true;
+    }
+
+    if (['false', '0', 'no'].includes(normalizedValue)) {
+      return false;
+    }
+  }
+
+  throw new Error(`${key} must be a boolean`);
 }
 
 function getPort(value: unknown): number {

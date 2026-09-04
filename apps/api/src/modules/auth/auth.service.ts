@@ -20,6 +20,7 @@ import {
   UserWithAuthRelations,
 } from '../user/constants/user.include';
 import { toUserEntity } from '../user/mappers/user.mapper';
+import { EmailService } from '../email/email.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -51,6 +52,7 @@ export class AuthService {
     private readonly passwordService: PasswordService,
     private readonly jwtTokenService: JwtTokenService,
     private readonly configService: ConfigService<EnvironmentVariables, true>,
+    private readonly emailService: EmailService,
   ) {}
 
   async register(
@@ -100,7 +102,7 @@ export class AuthService {
     });
 
     const emailVerification = await this.createEmailVerificationToken(
-      user.id,
+      user,
       context,
     );
 
@@ -191,9 +193,16 @@ export class AuthService {
       ...context,
     });
 
+    await this.emailService.sendPasswordReset({
+      to: user.email,
+      name: user.name,
+      token: resetToken,
+      expiresAt,
+    });
+
     return {
       accepted: true,
-      resetToken,
+      resetToken: this.shouldExposeAuthTokens() ? resetToken : undefined,
       expiresAt: expiresAt.toISOString(),
     };
   }
@@ -277,7 +286,7 @@ export class AuthService {
     }
 
     const emailVerification = await this.createEmailVerificationToken(
-      user.id,
+      user,
       context,
     );
 
@@ -473,7 +482,7 @@ export class AuthService {
     user: UserWithAuthRelations,
     context: AuthRequestContext,
     emailVerification?: {
-      verificationToken: string;
+      verificationToken?: string;
       expiresAt: string;
     },
   ): Promise<AuthTokenEntity> {
@@ -514,15 +523,15 @@ export class AuthService {
   }
 
   private async createEmailVerificationToken(
-    userId: string,
+    user: Pick<UserWithAuthRelations, 'id' | 'email' | 'name'>,
     context: AuthRequestContext,
   ): Promise<{
-    verificationToken: string;
+    verificationToken?: string;
     expiresAt: string;
   }> {
     await this.prisma.emailVerificationToken.updateMany({
       where: {
-        userId,
+        userId: user.id,
         usedAt: null,
       },
       data: {
@@ -537,24 +546,39 @@ export class AuthService {
     await this.prisma.emailVerificationToken.create({
       data: {
         id: tokenId,
-        userId,
+        userId: user.id,
         tokenHash: this.hashOpaqueToken(verificationToken),
         expiresAt,
       },
     });
 
     await this.createAuditLog({
-      actorId: userId,
+      actorId: user.id,
       action: 'auth.email_verification_requested',
       targetType: 'User',
-      targetId: userId,
+      targetId: user.id,
       ...context,
     });
 
+    await this.emailService.sendEmailVerification({
+      to: user.email,
+      name: user.name,
+      token: verificationToken,
+      expiresAt,
+    });
+
     return {
-      verificationToken,
+      verificationToken: this.shouldExposeAuthTokens()
+        ? verificationToken
+        : undefined,
       expiresAt: expiresAt.toISOString(),
     };
+  }
+
+  private shouldExposeAuthTokens(): boolean {
+    return this.configService.get('SEND_AUTH_TOKENS_IN_RESPONSE', {
+      infer: true,
+    });
   }
 
   private buildRefreshToken(sessionId: string): string {
