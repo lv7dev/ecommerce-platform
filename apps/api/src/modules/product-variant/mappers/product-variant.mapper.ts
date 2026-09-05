@@ -11,6 +11,8 @@ export function toProductVariantEntity(
     barcode: variant.barcode,
     imageUrl: variant.imageUrl,
     stock: variant.stock,
+    reservedStock: variant.reservedStock,
+    availableStock: variant.stock - variant.reservedStock,
     isActive: variant.isActive,
     optionValues: variant.optionValues.map(({ optionValue }) => ({
       id: optionValue.id,

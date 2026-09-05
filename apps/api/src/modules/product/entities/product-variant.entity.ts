@@ -22,6 +22,12 @@ export class ProductEmbeddedVariantEntity {
   @ApiProperty({ example: 20 })
   stock: number;
 
+  @ApiProperty({ example: 3 })
+  reservedStock: number;
+
+  @ApiProperty({ example: 17 })
+  availableStock: number;
+
   @ApiProperty({ example: true })
   isActive: boolean;
 

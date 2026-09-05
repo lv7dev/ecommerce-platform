@@ -3,6 +3,7 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
+import { isPrismaError } from '../../../common/helpers/prisma-error.helper';
 
 export function handleProductPrismaError(error: unknown): never {
   if (isPrismaError(error, 'P2002')) {
@@ -20,13 +21,4 @@ export function handleProductPrismaError(error: unknown): never {
   }
 
   throw error;
-}
-
-function isPrismaError(error: unknown, code: string): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    (error as { code?: string }).code === code
-  );
 }

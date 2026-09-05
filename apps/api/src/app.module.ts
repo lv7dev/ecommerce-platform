@@ -13,6 +13,8 @@ import { ProductVariantPriceModule } from './modules/product-variant-price/produ
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
+import { CartModule } from './modules/cart/cart.module';
+import { OrderModule } from './modules/order/order.module';
 
 @Module({
   imports: [
@@ -29,6 +31,8 @@ import { AuditLogModule } from './modules/audit-log/audit-log.module';
     ProductModule,
     ProductVariantModule,
     ProductVariantPriceModule,
+    CartModule,
+    OrderModule,
     AuditLogModule,
   ],
   controllers: [AppController],
