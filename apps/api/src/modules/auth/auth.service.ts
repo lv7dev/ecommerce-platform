@@ -202,7 +202,6 @@ export class AuthService {
 
     return {
       accepted: true,
-      resetToken: this.shouldExposeAuthTokens() ? resetToken : undefined,
       expiresAt: expiresAt.toISOString(),
     };
   }
@@ -358,6 +357,10 @@ export class AuthService {
   }
 
   async refresh(refreshTokenDto: RefreshTokenDto): Promise<AuthTokenEntity> {
+    if (!refreshTokenDto.refreshToken) {
+      throw new UnauthorizedException('Missing refresh token');
+    }
+
     const sessionId = this.getSessionIdFromRefreshToken(
       refreshTokenDto.refreshToken,
     );
@@ -408,6 +411,10 @@ export class AuthService {
     refreshTokenDto: RefreshTokenDto,
     context: AuthRequestContext,
   ): Promise<LogoutEntity> {
+    if (!refreshTokenDto.refreshToken) {
+      return { revoked: false };
+    }
+
     const sessionId = this.getSessionIdFromRefreshToken(
       refreshTokenDto.refreshToken,
     );
@@ -482,7 +489,6 @@ export class AuthService {
     user: UserWithAuthRelations,
     context: AuthRequestContext,
     emailVerification?: {
-      verificationToken?: string;
       expiresAt: string;
     },
   ): Promise<AuthTokenEntity> {
@@ -526,7 +532,6 @@ export class AuthService {
     user: Pick<UserWithAuthRelations, 'id' | 'email' | 'name'>,
     context: AuthRequestContext,
   ): Promise<{
-    verificationToken?: string;
     expiresAt: string;
   }> {
     await this.prisma.emailVerificationToken.updateMany({
@@ -568,17 +573,8 @@ export class AuthService {
     });
 
     return {
-      verificationToken: this.shouldExposeAuthTokens()
-        ? verificationToken
-        : undefined,
       expiresAt: expiresAt.toISOString(),
     };
-  }
-
-  private shouldExposeAuthTokens(): boolean {
-    return this.configService.get('SEND_AUTH_TOKENS_IN_RESPONSE', {
-      infer: true,
-    });
   }
 
   private buildRefreshToken(sessionId: string): string {

@@ -6,16 +6,18 @@ import {
   HttpStatus,
   Post,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCookieAuth,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
@@ -27,57 +29,108 @@ import {
   RequestEmailVerificationEntity,
   VerifyEmailEntity,
 } from './entities/email-verification.entity';
-import { AuthTokenEntity, LogoutEntity } from './entities/auth-token.entity';
+import {
+  AuthSessionEntity,
+  AuthTokenEntity,
+  LogoutEntity,
+} from './entities/auth-token.entity';
 import {
   ForgotPasswordEntity,
   ResetPasswordEntity,
 } from './entities/password-reset.entity';
 import { AuthGuard } from './guards/auth.guard';
+import { AuthCookieService } from './auth-cookie.service';
 import { AuthService } from './auth.service';
 import type { AuthenticatedUser } from './types/authenticated-user.type';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly authCookieService: AuthCookieService,
+  ) {}
 
   @ApiOperation({ summary: 'Register a user account' })
-  @ApiCreatedResponse({ type: AuthTokenEntity })
+  @ApiCreatedResponse({ type: AuthSessionEntity })
   @Post('register')
-  register(@Body() registerDto: RegisterDto, @Req() request: Request) {
-    return this.authService.register(
+  async register(
+    @Body() registerDto: RegisterDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const authTokens = await this.authService.register(
       registerDto,
       this.getRequestContext(request),
     );
+
+    this.authCookieService.setAuthCookies(response, authTokens);
+
+    return this.toAuthSession(authTokens);
   }
 
   @ApiOperation({ summary: 'Login with email and password' })
-  @ApiOkResponse({ type: AuthTokenEntity })
+  @ApiOkResponse({ type: AuthSessionEntity })
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  login(@Body() loginDto: LoginDto, @Req() request: Request) {
-    return this.authService.login(loginDto, this.getRequestContext(request));
+  async login(
+    @Body() loginDto: LoginDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const authTokens = await this.authService.login(
+      loginDto,
+      this.getRequestContext(request),
+    );
+
+    this.authCookieService.setAuthCookies(response, authTokens);
+
+    return this.toAuthSession(authTokens);
   }
 
   @ApiOperation({
     summary: 'Rotate refresh token and issue a new access token',
   })
-  @ApiOkResponse({ type: AuthTokenEntity })
+  @ApiOkResponse({ type: AuthSessionEntity })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  refresh(@Body() refreshTokenDto: RefreshTokenDto) {
-    return this.authService.refresh(refreshTokenDto);
+  async refresh(
+    @Body() refreshTokenDto: RefreshTokenDto = {},
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const authTokens = await this.authService.refresh({
+      refreshToken:
+        refreshTokenDto.refreshToken ??
+        this.authCookieService.getRefreshToken(request),
+    });
+
+    this.authCookieService.setAuthCookies(response, authTokens);
+
+    return this.toAuthSession(authTokens);
   }
 
   @ApiOperation({ summary: 'Logout by revoking a refresh session' })
   @ApiOkResponse({ type: LogoutEntity })
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  logout(@Body() refreshTokenDto: RefreshTokenDto, @Req() request: Request) {
-    return this.authService.logout(
-      refreshTokenDto,
+  async logout(
+    @Body() refreshTokenDto: RefreshTokenDto = {},
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const logoutResult = await this.authService.logout(
+      {
+        refreshToken:
+          refreshTokenDto.refreshToken ??
+          this.authCookieService.getRefreshToken(request),
+      },
       this.getRequestContext(request),
     );
+
+    this.authCookieService.clearAuthCookies(response);
+
+    return logoutResult;
   }
 
   @ApiOperation({ summary: 'Request a password reset token' })
@@ -110,6 +163,7 @@ export class AuthController {
 
   @ApiOperation({ summary: 'Request an email verification token' })
   @ApiBearerAuth()
+  @ApiCookieAuth()
   @ApiOkResponse({ type: RequestEmailVerificationEntity })
   @UseGuards(AuthGuard)
   @Post('email-verification/request')
@@ -137,6 +191,7 @@ export class AuthController {
 
   @ApiOperation({ summary: 'Get the current authenticated user' })
   @ApiBearerAuth()
+  @ApiCookieAuth()
   @UseGuards(AuthGuard)
   @Get('me')
   me(@CurrentUser() user: AuthenticatedUser) {
@@ -147,6 +202,14 @@ export class AuthController {
     return {
       userAgent: request.headers['user-agent'],
       ipAddress: request.ip,
+    };
+  }
+
+  private toAuthSession(authTokens: AuthTokenEntity): AuthSessionEntity {
+    return {
+      emailVerification: authTokens.emailVerification,
+      expiresIn: authTokens.expiresIn,
+      user: authTokens.user,
     };
   }
 }

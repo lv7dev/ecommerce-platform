@@ -12,13 +12,12 @@ export interface AuthenticatedUser {
   status: UserStatus;
 }
 
-export interface AuthTokens {
-  accessToken: string;
-  expiresIn: number;
-  refreshToken: string;
-  tokenType?: 'Bearer';
+export interface AuthEmailVerification {
+  expiresAt: string;
 }
 
-export interface AuthSession extends AuthTokens {
+export interface AuthSession {
+  emailVerification?: AuthEmailVerification;
+  expiresIn: number;
   user: AuthenticatedUser;
 }

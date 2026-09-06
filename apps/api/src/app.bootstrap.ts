@@ -5,6 +5,7 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import cookieParser from 'cookie-parser';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { EnvironmentVariables } from './config/env.validation';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
@@ -15,6 +16,7 @@ export function configureApp(app: INestApplication): void {
     app.get<ConfigService<EnvironmentVariables, true>>(ConfigService);
 
   app.setGlobalPrefix('api');
+  app.use(cookieParser());
 
   app.enableCors({
     origin: configService.get('WEB_ORIGIN', { infer: true }),
@@ -49,6 +51,7 @@ export function configureSwagger(app: INestApplication): void {
     .setDescription('API documentation for the E-commerce Platform')
     .setVersion('1.0')
     .addBearerAuth()
+    .addCookieAuth()
     .build();
 
   const documentFactory = () =>

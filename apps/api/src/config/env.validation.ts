@@ -1,10 +1,17 @@
 const nodeEnvironments = ['development', 'test', 'production'] as const;
 const mailProviders = ['console', 'resend'] as const;
+const cookieSameSiteValues = ['lax', 'strict', 'none'] as const;
 
 export type NodeEnvironment = (typeof nodeEnvironments)[number];
 export type MailProvider = (typeof mailProviders)[number];
+export type CookieSameSite = (typeof cookieSameSiteValues)[number];
 
 export interface EnvironmentVariables {
+  AUTH_ACCESS_COOKIE_NAME: string;
+  AUTH_COOKIE_DOMAIN?: string;
+  AUTH_COOKIE_SAMESITE: CookieSameSite;
+  AUTH_COOKIE_SECURE: boolean;
+  AUTH_REFRESH_COOKIE_NAME: string;
   APP_WEB_URL: string;
   DATABASE_URL: string;
   EMAIL_VERIFICATION_TOKEN_TTL_SECONDS: number;
@@ -17,7 +24,6 @@ export interface EnvironmentVariables {
   NODE_ENV: NodeEnvironment;
   PORT: number;
   RESEND_API_KEY?: string;
-  SEND_AUTH_TOKENS_IN_RESPONSE: boolean;
   WEB_ORIGIN: string;
 }
 
@@ -59,11 +65,26 @@ export function validateEnvironment(
     config.MAIL_FROM,
     'E-commerce <onboarding@resend.dev>',
   );
-  const sendAuthTokensInResponse = getBoolean(
-    config.SEND_AUTH_TOKENS_IN_RESPONSE,
-    nodeEnv !== 'production',
-    'SEND_AUTH_TOKENS_IN_RESPONSE',
+  const authAccessCookieName = getOptionalString(
+    config.AUTH_ACCESS_COOKIE_NAME,
+    'ep_access_token',
   );
+  const authRefreshCookieName = getOptionalString(
+    config.AUTH_REFRESH_COOKIE_NAME,
+    'ep_refresh_token',
+  );
+  const authCookieDomain = getOptionalString(config.AUTH_COOKIE_DOMAIN, '');
+  const authCookieSameSite = getCookieSameSite(config.AUTH_COOKIE_SAMESITE);
+  const authCookieSecure = getBoolean(
+    config.AUTH_COOKIE_SECURE,
+    nodeEnv === 'production',
+    'AUTH_COOKIE_SECURE',
+  );
+  if (authCookieSameSite === 'none' && !authCookieSecure) {
+    throw new Error(
+      'AUTH_COOKIE_SECURE=true is required when AUTH_COOKIE_SAMESITE=none',
+    );
+  }
 
   if (mailProvider === 'resend' && !resendApiKey) {
     throw new Error('RESEND_API_KEY is required when MAIL_PROVIDER=resend');
@@ -75,6 +96,11 @@ export function validateEnvironment(
 
   return {
     ...config,
+    AUTH_ACCESS_COOKIE_NAME: authAccessCookieName,
+    AUTH_COOKIE_DOMAIN: authCookieDomain || undefined,
+    AUTH_COOKIE_SAMESITE: authCookieSameSite,
+    AUTH_COOKIE_SECURE: authCookieSecure,
+    AUTH_REFRESH_COOKIE_NAME: authRefreshCookieName,
     APP_WEB_URL: appWebUrl,
     DATABASE_URL: databaseUrl,
     EMAIL_VERIFICATION_TOKEN_TTL_SECONDS: emailVerificationTokenTtlSeconds,
@@ -87,7 +113,6 @@ export function validateEnvironment(
     NODE_ENV: nodeEnv,
     PORT: port,
     RESEND_API_KEY: resendApiKey || undefined,
-    SEND_AUTH_TOKENS_IN_RESPONSE: sendAuthTokensInResponse,
     WEB_ORIGIN: webOrigin,
   };
 }
@@ -165,6 +190,22 @@ function getMailProvider(value: unknown): MailProvider {
   }
 
   throw new Error(`MAIL_PROVIDER must be one of: ${mailProviders.join(', ')}`);
+}
+
+function getCookieSameSite(value: unknown): CookieSameSite {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return 'lax';
+  }
+
+  const normalizedValue = value.trim().toLowerCase();
+
+  if (cookieSameSiteValues.includes(normalizedValue as CookieSameSite)) {
+    return normalizedValue as CookieSameSite;
+  }
+
+  throw new Error(
+    `AUTH_COOKIE_SAMESITE must be one of: ${cookieSameSiteValues.join(', ')}`,
+  );
 }
 
 function getBoolean(
