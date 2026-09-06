@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# E-commerce Web
+
+Frontend storefront built with Next.js, Tailwind CSS, shadcn-style UI primitives,
+TanStack Query, Zustand, React Hook Form, and Zod.
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies from the repository root:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```powershell
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Create the web environment file:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```powershell
+Copy-Item apps\web\.env.example apps\web\.env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Run the app:
 
-## Learn More
+```powershell
+pnpm --filter web dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Architecture
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Routes live in `app`. Shared infrastructure lives in `src/shared`. Domain code
+lives in `src/features`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```text
+app/
+  providers.tsx
+src/
+  shared/
+    api/
+    config/
+    forms/
+    lib/
+    query/
+    types/
+    ui/
+  features/
+    auth/
+    cart/
+    products/
+```
 
-## Deploy on Vercel
+## Conventions
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Use Server Components for page-level reads where possible.
+- Use Client Components for interactive UI, forms, cart behavior, and browser-only state.
+- Put API functions in `features/<domain>/api.ts`.
+- Use `apiRequest` for backend calls; it centralizes query params, credentials, data unwrap,
+  and request/response/error interceptors.
+- Put TanStack Query option factories in `features/<domain>/queries.ts`.
+- Let route-level `error.tsx` files handle render/runtime failures; use `ErrorState` for
+  recoverable API/query failures inside feature UI.
+- Keep product/cart/auth domain types in their feature folders.
+- Keep generic response and pagination types in `src/shared/types`.
+- Keep reusable UI in `src/shared/ui`; feature-specific UI stays under the feature.
+- Use semantic tokens from `app/globals.css` instead of hardcoded colors.
+- Use `react-hook-form` with `zod` schemas for forms.
+- Keep sensitive auth tokens in httpOnly cookies through server route handlers or server actions.
+- Use Zustand only for client-side interaction state such as cart UI state.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Quality Gates
+
+```powershell
+pnpm --filter web lint
+pnpm --filter web typecheck
+pnpm --filter web test
+pnpm --filter web build
+```
+
+Use `pnpm --filter web verify` before opening a pull request.
