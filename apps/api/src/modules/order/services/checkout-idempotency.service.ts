@@ -33,7 +33,7 @@ export class CheckoutIdempotencyService {
   ensureSameCheckoutRequestWhenCartExists(
     existingRequestHash: string,
     cart: CartWithRelations | null,
-    checkoutDto: CheckoutDto | undefined,
+    checkoutDto: CheckoutDto,
   ): void {
     if (!cart || cart.items.length === 0) {
       return;
@@ -88,15 +88,12 @@ export class CheckoutIdempotencyService {
     return idempotencyKey?.order ?? null;
   }
 
-  createRequestHash(
-    cart: CartWithRelations,
-    checkoutDto: CheckoutDto | undefined,
-  ): string {
+  createRequestHash(cart: CartWithRelations, checkoutDto: CheckoutDto): string {
     const payload = {
       version: 1,
       currency: cart.currency,
-      note: checkoutDto?.note ?? null,
-      shippingAddress: checkoutDto?.shippingAddress ?? null,
+      note: checkoutDto.note ?? null,
+      shippingAddress: checkoutDto.shippingAddress,
       items: cart.items
         .map((item) => ({
           variantId: item.variantId,

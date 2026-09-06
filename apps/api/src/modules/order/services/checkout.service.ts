@@ -49,7 +49,7 @@ export class CheckoutService {
   async checkout(
     userId: string,
     idempotencyKey: string | undefined,
-    checkoutDto: CheckoutDto | undefined,
+    checkoutDto: CheckoutDto,
   ): Promise<OrderEntity> {
     const normalizedKey =
       this.checkoutIdempotencyService.normalizeKey(idempotencyKey);
@@ -132,7 +132,7 @@ export class CheckoutService {
               fulfillmentStatus: FulfillmentStatus.PENDING,
               subtotalMinor,
               totalMinor,
-              note: checkoutDto?.note ?? null,
+              note: checkoutDto.note ?? null,
               shippingAddressSnapshot:
                 this.buildShippingAddressSnapshot(checkoutDto),
               expiresAt: this.getPaymentExpiresAt(),
@@ -240,13 +240,9 @@ export class CheckoutService {
   }
 
   private buildShippingAddressSnapshot(
-    checkoutDto: CheckoutDto | undefined,
-  ): Prisma.InputJsonValue | undefined {
-    const address = checkoutDto?.shippingAddress;
-
-    if (!address) {
-      return undefined;
-    }
+    checkoutDto: CheckoutDto,
+  ): Prisma.InputJsonValue {
+    const { shippingAddress: address } = checkoutDto;
 
     return {
       fullName: address.fullName,

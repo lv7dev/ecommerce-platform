@@ -1,6 +1,7 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsDefined,
   IsOptional,
   IsString,
   MaxLength,
@@ -9,11 +10,11 @@ import {
 import { ShippingAddressDto } from './shipping-address.dto';
 
 export class CheckoutDto {
-  @ApiPropertyOptional({ type: ShippingAddressDto })
-  @IsOptional()
+  @ApiProperty({ type: ShippingAddressDto })
+  @IsDefined()
   @ValidateNested()
   @Type(() => ShippingAddressDto)
-  shippingAddress?: ShippingAddressDto;
+  shippingAddress: ShippingAddressDto;
 
   @ApiPropertyOptional({
     description:

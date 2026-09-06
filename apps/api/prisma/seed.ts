@@ -5,7 +5,10 @@ import { promisify } from 'node:util';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 import {
   Currency,
+  FulfillmentStatus,
   Locale,
+  OrderStatus,
+  PaymentStatus,
   ProductStatus,
   UserStatus,
 } from '../src/generated/prisma/enums.js';
@@ -1409,6 +1412,11 @@ function skuPart(value: string): string {
 }
 
 async function clearCatalogData(): Promise<void> {
+  await prisma.checkoutIdempotencyKey.deleteMany();
+  await prisma.orderItem.deleteMany();
+  await prisma.order.deleteMany();
+  await prisma.cartItem.deleteMany();
+  await prisma.cart.deleteMany();
   await prisma.productSearchDocument.deleteMany();
   await prisma.productVariantPrice.deleteMany();
   await prisma.variantOptionValue.deleteMany();
@@ -1683,6 +1691,290 @@ async function seedProducts(
   }
 }
 
+async function getDemoOrderVariants() {
+  return prisma.productVariant.findMany({
+    where: {
+      isActive: true,
+      product: {
+        status: ProductStatus.ACTIVE,
+      },
+      prices: {
+        some: {
+          currency: Currency.VND,
+          isActive: true,
+        },
+      },
+    },
+    include: {
+      product: {
+        include: {
+          translations: {
+            orderBy: {
+              locale: 'asc',
+            },
+          },
+        },
+      },
+      optionValues: {
+        include: {
+          optionValue: {
+            include: {
+              translations: {
+                orderBy: {
+                  locale: 'asc',
+                },
+              },
+              option: {
+                include: {
+                  translations: {
+                    orderBy: {
+                      locale: 'asc',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      prices: true,
+    },
+    orderBy: {
+      createdAt: 'asc',
+    },
+    take: 8,
+  });
+}
+
+type DemoOrderVariant = Awaited<
+  ReturnType<typeof getDemoOrderVariants>
+>[number];
+
+type DemoOrderSeed = {
+  orderNumber: string;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  fulfillmentStatus: FulfillmentStatus;
+  note: string;
+  variantIndex: number;
+  quantity: number;
+  createdAt: Date;
+  cancelledAt?: Date;
+  cancelReason?: string;
+};
+
+const demoShippingAddress = {
+  fullName: 'Demo Customer',
+  phone: '0901234567',
+  addressLine1: '123 Nguyen Trai',
+  addressLine2: 'Tang 5, can 502',
+  ward: 'Phuong Ben Thanh',
+  district: 'Quan 1',
+  province: 'TP. Ho Chi Minh',
+  postalCode: '700000',
+  countryCode: 'VN',
+};
+
+async function seedDemoCustomerOrders(): Promise<number> {
+  const customer = await prisma.user.findUniqueOrThrow({
+    where: { email: 'customer@example.com' },
+  });
+  const variants = await getDemoOrderVariants();
+
+  if (variants.length < 4) {
+    throw new Error('Not enough product variants to seed demo orders');
+  }
+
+  const now = new Date();
+  const daysAgo = (days: number) =>
+    new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  const orderSeeds: DemoOrderSeed[] = [
+    {
+      orderNumber: 'ORD-DEMO-CONFIRMED',
+      status: OrderStatus.CONFIRMED,
+      paymentStatus: PaymentStatus.PAID,
+      fulfillmentStatus: FulfillmentStatus.PROCESSING,
+      note: 'Demo order paid and being prepared.',
+      variantIndex: 0,
+      quantity: 1,
+      createdAt: daysAgo(2),
+    },
+    {
+      orderNumber: 'ORD-DEMO-SHIPPED',
+      status: OrderStatus.CONFIRMED,
+      paymentStatus: PaymentStatus.PAID,
+      fulfillmentStatus: FulfillmentStatus.SHIPPED,
+      note: 'Demo order handed to the carrier.',
+      variantIndex: 1,
+      quantity: 2,
+      createdAt: daysAgo(5),
+    },
+    {
+      orderNumber: 'ORD-DEMO-COMPLETED',
+      status: OrderStatus.COMPLETED,
+      paymentStatus: PaymentStatus.PAID,
+      fulfillmentStatus: FulfillmentStatus.DELIVERED,
+      note: 'Demo order delivered successfully.',
+      variantIndex: 2,
+      quantity: 1,
+      createdAt: daysAgo(12),
+    },
+    {
+      orderNumber: 'ORD-DEMO-CANCELLED',
+      status: OrderStatus.CANCELLED,
+      paymentStatus: PaymentStatus.FAILED,
+      fulfillmentStatus: FulfillmentStatus.CANCELLED,
+      note: 'Demo order cancelled after payment failed.',
+      variantIndex: 3,
+      quantity: 1,
+      createdAt: daysAgo(20),
+      cancelledAt: daysAgo(19),
+      cancelReason: 'Payment failed in demo seed.',
+    },
+  ];
+
+  for (const seed of orderSeeds) {
+    const variant = variants[seed.variantIndex];
+    const price = getDemoOrderPrice(variant);
+    const subtotalMinor = price.amountMinor * BigInt(seed.quantity);
+
+    if (seed.paymentStatus === PaymentStatus.PAID) {
+      await prisma.productVariant.update({
+        where: { id: variant.id },
+        data: {
+          stock: {
+            decrement: seed.quantity,
+          },
+        },
+      });
+    }
+
+    await prisma.order.create({
+      data: {
+        orderNumber: seed.orderNumber,
+        userId: customer.id,
+        currency: Currency.VND,
+        status: seed.status,
+        paymentStatus: seed.paymentStatus,
+        fulfillmentStatus: seed.fulfillmentStatus,
+        subtotalMinor,
+        totalMinor: subtotalMinor,
+        note: seed.note,
+        shippingAddressSnapshot: demoShippingAddress,
+        expiresAt: null,
+        cancelledAt: seed.cancelledAt ?? null,
+        cancelReason: seed.cancelReason ?? null,
+        createdAt: seed.createdAt,
+        updatedAt: seed.createdAt,
+        items: {
+          create: {
+            variantId: variant.id,
+            productId: variant.productId,
+            productName: getDemoOrderProductName(variant),
+            variantName: getDemoOrderVariantName(variant),
+            sku: variant.sku,
+            imageUrl: variant.imageUrl,
+            unitAmountMinor: price.amountMinor,
+            quantity: seed.quantity,
+            lineTotalMinor: subtotalMinor,
+            snapshot: buildDemoOrderItemSnapshot(variant, price),
+            createdAt: seed.createdAt,
+          },
+        },
+      },
+    });
+  }
+
+  return orderSeeds.length;
+}
+
+function getDemoOrderPrice(variant: DemoOrderVariant) {
+  const now = new Date();
+  const price = variant.prices.find(
+    (price) =>
+      price.currency === Currency.VND &&
+      price.isActive &&
+      (!price.startsAt || price.startsAt <= now) &&
+      (!price.endsAt || price.endsAt >= now),
+  );
+
+  if (!price) {
+    throw new Error(`Variant ${variant.sku} has no active VND price`);
+  }
+
+  return price;
+}
+
+function getDemoOrderProductName(variant: DemoOrderVariant): string {
+  return (
+    variant.product.translations.find(
+      (translation) => translation.locale === Locale.vi,
+    )?.name ??
+    variant.product.translations[0]?.name ??
+    variant.sku
+  );
+}
+
+function getDemoOrderVariantName(variant: DemoOrderVariant): string | null {
+  const optionNames = getDemoOrderOptionValues(variant).map(
+    (optionValue) => `${optionValue.optionName}: ${optionValue.valueName}`,
+  );
+
+  return optionNames.length ? optionNames.join(' / ') : null;
+}
+
+function getDemoOrderOptionValues(variant: DemoOrderVariant) {
+  return variant.optionValues.map(({ optionValue }) => {
+    const optionName =
+      optionValue.option.translations.find(
+        (translation) => translation.locale === Locale.vi,
+      )?.name ??
+      optionValue.option.translations[0]?.name ??
+      optionValue.option.code;
+    const valueName =
+      optionValue.translations.find(
+        (translation) => translation.locale === Locale.vi,
+      )?.value ??
+      optionValue.translations[0]?.value ??
+      optionValue.code;
+
+    return {
+      optionCode: optionValue.option.code,
+      optionName,
+      valueCode: optionValue.code,
+      valueName,
+    };
+  });
+}
+
+function buildDemoOrderItemSnapshot(
+  variant: DemoOrderVariant,
+  price: DemoOrderVariant['prices'][number],
+) {
+  return {
+    product: {
+      id: variant.productId,
+      translations: variant.product.translations.map((translation) => ({
+        locale: translation.locale,
+        name: translation.name,
+        slug: translation.slug,
+      })),
+    },
+    variant: {
+      id: variant.id,
+      sku: variant.sku,
+      barcode: variant.barcode,
+      imageUrl: variant.imageUrl,
+      optionValues: getDemoOrderOptionValues(variant),
+    },
+    price: {
+      currency: price.currency,
+      amountMinor: price.amountMinor.toString(),
+      compareAtAmountMinor: price.compareAtAmountMinor?.toString() ?? null,
+    },
+  };
+}
+
 async function main(): Promise<void> {
   await seedSystemAccessData();
   await seedDemoUsers();
@@ -1692,11 +1984,13 @@ async function main(): Promise<void> {
   const optionValueIds = await seedOptions();
 
   await seedProducts(categoryIds, optionValueIds);
+  const demoOrderCount = await seedDemoCustomerOrders();
 
   console.log(`Seeded ${categories.length} categories.`);
   console.log(`Seeded ${options.length} options.`);
   console.log(`Seeded ${products.length} products with variants and prices.`);
   console.log(`Seeded ${demoUsers.length} demo users.`);
+  console.log(`Seeded ${demoOrderCount} demo customer orders.`);
 }
 
 main()

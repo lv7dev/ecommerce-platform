@@ -25,7 +25,7 @@ export class OrderService {
   async checkout(
     userId: string,
     idempotencyKey: string | undefined,
-    checkoutDto: CheckoutDto | undefined,
+    checkoutDto: CheckoutDto,
   ): Promise<OrderEntity> {
     return this.checkoutService.checkout(userId, idempotencyKey, checkoutDto);
   }
