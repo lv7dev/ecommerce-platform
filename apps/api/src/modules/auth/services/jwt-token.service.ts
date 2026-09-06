@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { EnvironmentVariables } from '../../config/env.validation';
+import { EnvironmentVariables } from '../../../config/env.validation';
 
 type TokenType = 'access';
 

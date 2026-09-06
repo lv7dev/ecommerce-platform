@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { CookieOptions, Request, Response } from 'express';
-import { EnvironmentVariables } from '../../config/env.validation';
-import { AuthTokenEntity } from './entities/auth-token.entity';
+import { EnvironmentVariables } from '../../../config/env.validation';
+import { AuthTokenEntity } from '../entities/auth-token.entity';
 
 @Injectable()
 export class AuthCookieService {

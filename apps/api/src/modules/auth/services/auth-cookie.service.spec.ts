@@ -1,9 +1,9 @@
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Response } from 'express';
-import { EnvironmentVariables } from '../../config/env.validation';
+import { EnvironmentVariables } from '../../../config/env.validation';
 import { AuthCookieService } from './auth-cookie.service';
-import { AuthTokenEntity } from './entities/auth-token.entity';
+import { AuthTokenEntity } from '../entities/auth-token.entity';
 
 describe('AuthCookieService', () => {
   let service: AuthCookieService;

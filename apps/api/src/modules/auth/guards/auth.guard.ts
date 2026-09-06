@@ -5,8 +5,8 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from '../auth.service';
-import { AuthCookieService } from '../auth-cookie.service';
-import { JwtTokenService } from '../jwt-token.service';
+import { AuthCookieService } from '../services/auth-cookie.service';
+import { JwtTokenService } from '../services/jwt-token.service';
 import { AuthenticatedRequest } from '../types/authenticated-request.type';
 
 @Injectable()
@@ -20,8 +20,8 @@ export class AuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const token =
-      this.extractBearerToken(request.headers.authorization) ??
-      this.authCookieService.getAccessToken(request);
+      this.authCookieService.getAccessToken(request) ??
+      this.extractAuthorizationBearerToken(request.headers.authorization);
 
     if (!token) {
       throw new UnauthorizedException('Missing access token');
@@ -37,7 +37,9 @@ export class AuthGuard implements CanActivate {
     return true;
   }
 
-  private extractBearerToken(authorization?: string): string | undefined {
+  private extractAuthorizationBearerToken(
+    authorization?: string,
+  ): string | undefined {
     const [type, token] = authorization?.split(' ') ?? [];
 
     if (!type && !token) {

@@ -39,8 +39,8 @@ import {
   ResetPasswordEntity,
 } from './entities/password-reset.entity';
 import { AuthGuard } from './guards/auth.guard';
-import { AuthCookieService } from './auth-cookie.service';
 import { AuthService } from './auth.service';
+import { AuthCookieService } from './services/auth-cookie.service';
 import type { AuthenticatedUser } from './types/authenticated-user.type';
 
 @ApiTags('Auth')
