@@ -68,7 +68,7 @@ export function RegisterForm() {
         <Input
           autoComplete="new-password"
           id="password"
-          placeholder="At least 8 characters"
+          placeholder="At least 12 characters"
           type="password"
           {...form.register('password')}
         />

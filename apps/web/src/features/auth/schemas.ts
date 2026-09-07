@@ -3,7 +3,7 @@ import { emailSchema, passwordSchema, requiredStringSchema } from '@/shared/form
 
 export const loginSchema = z.object({
   email: emailSchema,
-  password: requiredStringSchema,
+  password: passwordSchema,
 });
 
 export const forgotPasswordSchema = z.object({

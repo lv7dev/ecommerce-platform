@@ -1220,6 +1220,7 @@ const demoUsers: DemoUserSeed[] = [
     roleCode: 'CUSTOMER',
   },
 ];
+const DEMO_USER_PASSWORD = 'Demo secure pass 2026!';
 
 async function seedSystemAccessData(): Promise<void> {
   for (const role of systemRoles) {
@@ -1332,7 +1333,7 @@ async function seedSystemAccessData(): Promise<void> {
 }
 
 async function seedDemoUsers(): Promise<void> {
-  const passwordHash = await hashSeedPassword('Password123!');
+  const passwordHash = await hashSeedPassword(DEMO_USER_PASSWORD);
 
   for (const user of demoUsers) {
     await prisma.user.upsert({
