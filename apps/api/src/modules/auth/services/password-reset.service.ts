@@ -91,6 +91,7 @@ export class PasswordResetService {
     resetPasswordDto: ResetPasswordDto,
     context: AuthRequestContext,
   ): Promise<ResetPasswordEntity> {
+    const now = new Date();
     const tokenId = this.authOpaqueTokenService.getOpaqueTokenId(
       resetPasswordDto.token,
     );
@@ -104,7 +105,7 @@ export class PasswordResetService {
     if (
       !passwordResetToken ||
       passwordResetToken.usedAt ||
-      passwordResetToken.expiresAt <= new Date() ||
+      passwordResetToken.expiresAt <= now ||
       !this.authOpaqueTokenService.verify(
         resetPasswordDto.token,
         passwordResetToken.tokenHash,
@@ -122,14 +123,26 @@ export class PasswordResetService {
     );
 
     await this.prisma.$transaction(async (tx) => {
+      const tokenClaim = await tx.passwordResetToken.updateMany({
+        where: {
+          expiresAt: {
+            gt: now,
+          },
+          id: passwordResetToken.id,
+          usedAt: null,
+        },
+        data: { usedAt: now },
+      });
+
+      if (tokenClaim.count !== 1) {
+        throw new BadRequestException(
+          'Invalid or expired password reset token',
+        );
+      }
+
       await tx.user.update({
         where: { id: passwordResetToken.userId },
         data: { passwordHash },
-      });
-
-      await tx.passwordResetToken.update({
-        where: { id: passwordResetToken.id },
-        data: { usedAt: new Date() },
       });
     });
 

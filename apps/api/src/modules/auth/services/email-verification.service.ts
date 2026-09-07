@@ -69,6 +69,7 @@ export class EmailVerificationService {
     verifyEmailDto: VerifyEmailDto,
     context: AuthRequestContext,
   ): Promise<VerifyEmailEntity> {
+    const now = new Date();
     const tokenId = this.authOpaqueTokenService.getOpaqueTokenId(
       verifyEmailDto.token,
     );
@@ -85,7 +86,7 @@ export class EmailVerificationService {
     if (
       !emailVerificationToken ||
       emailVerificationToken.usedAt ||
-      emailVerificationToken.expiresAt <= new Date() ||
+      emailVerificationToken.expiresAt <= now ||
       !this.authOpaqueTokenService.verify(
         verifyEmailDto.token,
         emailVerificationToken.tokenHash,
@@ -101,16 +102,27 @@ export class EmailVerificationService {
     );
 
     const updatedUser = await this.prisma.$transaction(async (tx) => {
-      await tx.emailVerificationToken.update({
-        where: { id: emailVerificationToken.id },
-        data: { usedAt: new Date() },
+      const tokenClaim = await tx.emailVerificationToken.updateMany({
+        where: {
+          expiresAt: {
+            gt: now,
+          },
+          id: emailVerificationToken.id,
+          usedAt: null,
+        },
+        data: { usedAt: now },
       });
+
+      if (tokenClaim.count !== 1) {
+        throw new BadRequestException(
+          'Invalid or expired email verification token',
+        );
+      }
 
       return tx.user.update({
         where: { id: emailVerificationToken.userId },
         data: {
-          emailVerifiedAt:
-            emailVerificationToken.user.emailVerifiedAt ?? new Date(),
+          emailVerifiedAt: emailVerificationToken.user.emailVerifiedAt ?? now,
         },
         include: userInclude,
       });
