@@ -3,7 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { BadgeCheck } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
@@ -20,11 +20,12 @@ import { FieldError } from './field-error';
 
 export function VerifyEmailForm() {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const submittedTokenRef = useRef<string | null>(null);
   const form = useForm<VerifyEmailInput>({
     defaultValues: {
-      token: searchParams.get('token') ?? '',
+      token: '',
     },
     resolver: zodResolver(verifyEmailSchema),
   });
@@ -46,13 +47,14 @@ export function VerifyEmailForm() {
 
     if (token) {
       form.setValue('token', token, { shouldValidate: true });
+      router.replace('/verify-email', { scroll: false });
 
       if (submittedTokenRef.current !== token) {
         submittedTokenRef.current = token;
         verifyEmailMutate({ token });
       }
     }
-  }, [form, searchParams, verifyEmailMutate]);
+  }, [form, router, searchParams, verifyEmailMutate]);
 
   if (verifyEmailMutation.isSuccess) {
     return (

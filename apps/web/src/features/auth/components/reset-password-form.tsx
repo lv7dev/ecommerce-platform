@@ -3,7 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { KeyRound } from 'lucide-react';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -16,12 +16,13 @@ import { resetPasswordSchema, type ResetPasswordFormValues } from '../schemas';
 import { FieldError } from './field-error';
 
 export function ResetPasswordForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const form = useForm<ResetPasswordFormValues>({
     defaultValues: {
       confirmPassword: '',
       password: '',
-      token: searchParams.get('token') ?? '',
+      token: '',
     },
     resolver: zodResolver(resetPasswordSchema),
   });
@@ -34,8 +35,9 @@ export function ResetPasswordForm() {
 
     if (token) {
       form.setValue('token', token, { shouldValidate: true });
+      router.replace('/reset-password', { scroll: false });
     }
-  }, [form, searchParams]);
+  }, [form, router, searchParams]);
 
   if (resetPasswordMutation.isSuccess) {
     return (
