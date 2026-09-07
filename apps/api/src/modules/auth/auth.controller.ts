@@ -40,6 +40,7 @@ import {
 } from './entities/password-reset.entity';
 import { AuthGuard } from './guards/auth.guard';
 import { AuthService } from './auth.service';
+import { AuthThrottle } from './decorators/auth-throttle.decorator';
 import { AuthCookieService } from './services/auth-cookie.service';
 import type { AuthenticatedUser } from './types/authenticated-user.type';
 
@@ -53,6 +54,7 @@ export class AuthController {
 
   @ApiOperation({ summary: 'Register a user account' })
   @ApiCreatedResponse({ type: AuthSessionEntity })
+  @AuthThrottle('register')
   @Post('register')
   async register(
     @Body() registerDto: RegisterDto,
@@ -71,6 +73,7 @@ export class AuthController {
 
   @ApiOperation({ summary: 'Login with email and password' })
   @ApiOkResponse({ type: AuthSessionEntity })
+  @AuthThrottle('login')
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
@@ -135,6 +138,7 @@ export class AuthController {
 
   @ApiOperation({ summary: 'Request a password reset token' })
   @ApiOkResponse({ type: ForgotPasswordEntity })
+  @AuthThrottle('forgotPassword')
   @Post('password/forgot')
   @HttpCode(HttpStatus.OK)
   forgotPassword(
@@ -149,6 +153,7 @@ export class AuthController {
 
   @ApiOperation({ summary: 'Reset password with a password reset token' })
   @ApiOkResponse({ type: ResetPasswordEntity })
+  @AuthThrottle('resetPassword')
   @Post('password/reset')
   @HttpCode(HttpStatus.OK)
   resetPassword(
@@ -180,6 +185,7 @@ export class AuthController {
 
   @ApiOperation({ summary: 'Verify email with an email verification token' })
   @ApiOkResponse({ type: VerifyEmailEntity })
+  @AuthThrottle('verifyEmail')
   @Post('email-verification/verify')
   @HttpCode(HttpStatus.OK)
   verifyEmail(@Body() verifyEmailDto: VerifyEmailDto, @Req() request: Request) {

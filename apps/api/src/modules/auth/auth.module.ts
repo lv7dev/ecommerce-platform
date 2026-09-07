@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { minutes, ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from '../../database/prisma/prisma.module';
 import { EmailModule } from '../email/email.module';
 import { AuthController } from './auth.controller';
@@ -16,7 +17,22 @@ import { PasswordService } from './services/password.service';
 import { PasswordResetService } from './services/password-reset.service';
 
 @Module({
-  imports: [PrismaModule, EmailModule],
+  imports: [
+    PrismaModule,
+    EmailModule,
+    ThrottlerModule.forRoot([
+      {
+        name: 'authIp',
+        limit: 60,
+        ttl: minutes(1),
+      },
+      {
+        name: 'authIdentity',
+        limit: 20,
+        ttl: minutes(15),
+      },
+    ]),
+  ],
   controllers: [AuthController],
   providers: [
     AuthService,
