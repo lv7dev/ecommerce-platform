@@ -32,6 +32,7 @@ describe('OrderController (e2e)', () => {
   const currentUser = {
     id: '018f4d7b-7ef3-4b77-9f35-05a34f968d7e',
     email: 'customer@example.com',
+    emailVerifiedAt: '2026-09-06T00:00:00.000Z',
     name: 'Demo Customer',
     status: UserStatus.ACTIVE,
     sessionId: 'session-1',

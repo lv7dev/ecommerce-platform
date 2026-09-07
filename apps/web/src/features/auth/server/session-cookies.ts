@@ -17,3 +17,16 @@ export async function clearAuthCookies() {
   cookieStore.delete(AUTH_COOKIE_NAMES.accessToken);
   cookieStore.delete(AUTH_COOKIE_NAMES.refreshToken);
 }
+
+export async function getAuthCookieHeader() {
+  const [accessToken, refreshToken] = await Promise.all([
+    getAccessTokenCookie(),
+    getRefreshTokenCookie(),
+  ]);
+  const cookiePairs = [
+    accessToken ? `${AUTH_COOKIE_NAMES.accessToken}=${accessToken}` : null,
+    refreshToken ? `${AUTH_COOKIE_NAMES.refreshToken}=${refreshToken}` : null,
+  ].filter(Boolean);
+
+  return cookiePairs.length > 0 ? cookiePairs.join('; ') : null;
+}

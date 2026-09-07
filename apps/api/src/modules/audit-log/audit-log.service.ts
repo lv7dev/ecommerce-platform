@@ -50,8 +50,8 @@ export class AuditLogService {
     const limit = query.limit ?? 20;
     const where = this.buildWhereInput(query);
 
-    const [items, total] = await this.prisma.$transaction([
-      this.prisma.auditLog.findMany({
+    const { items, total } = await this.prisma.$transaction(async (tx) => {
+      const items = await tx.auditLog.findMany({
         where,
         include: {
           actor: {
@@ -65,9 +65,11 @@ export class AuditLogService {
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
-      }),
-      this.prisma.auditLog.count({ where }),
-    ]);
+      });
+      const total = await tx.auditLog.count({ where });
+
+      return { items, total };
+    });
 
     return {
       items: items.map((item) => this.toEntity(item)),

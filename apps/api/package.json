@@ -35,7 +35,7 @@
     "class-validator": "^0.15.1",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
-    "pg": "^8.23.0",
+    "pg": "8.18.0",
     "reflect-metadata": "^0.2.2",
     "resend": "^6.25.0",
     "rxjs": "^7.8.1"

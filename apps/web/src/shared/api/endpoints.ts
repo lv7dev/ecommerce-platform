@@ -1,10 +1,14 @@
 export const apiEndpoints = {
   auth: {
+    forgotPassword: '/auth/password/forgot',
     login: '/auth/login',
     logout: '/auth/logout',
     me: '/auth/me',
     refresh: '/auth/refresh',
     register: '/auth/register',
+    requestEmailVerification: '/auth/email-verification/request',
+    resetPassword: '/auth/password/reset',
+    verifyEmail: '/auth/email-verification/verify',
   },
   cart: {
     items: '/cart/items',

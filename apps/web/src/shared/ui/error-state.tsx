@@ -1,9 +1,11 @@
 import { AlertCircle } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import { Button } from './button';
 
 interface ErrorStateProps {
   className?: string;
+  icon?: LucideIcon;
   message?: string;
   onRetry?: () => void;
   title?: string;
@@ -11,6 +13,7 @@ interface ErrorStateProps {
 
 export function ErrorState({
   className,
+  icon: Icon = AlertCircle,
   message = 'Something went wrong. Please try again.',
   onRetry,
   title = 'Unable to load data',
@@ -22,7 +25,7 @@ export function ErrorState({
         className,
       )}
     >
-      <AlertCircle className="mb-3 size-8 text-destructive" />
+      <Icon className="mb-3 size-8 text-destructive" />
       <h2 className="text-base font-semibold text-foreground">{title}</h2>
       <p className="mt-2 max-w-sm text-sm text-muted-foreground">{message}</p>
       {onRetry ? (

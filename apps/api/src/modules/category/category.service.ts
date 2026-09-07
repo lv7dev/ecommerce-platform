@@ -35,16 +35,18 @@ export class CategoryService {
     const where = this.buildWhereInput(query);
     const orderBy = this.buildOrderByInput(query);
 
-    const [items, total] = await this.prisma.$transaction([
-      this.prisma.category.findMany({
+    const { items, total } = await this.prisma.$transaction(async (tx) => {
+      const items = await tx.category.findMany({
         where,
         include: categoryInclude,
         orderBy,
         skip: (page - 1) * limit,
         take: limit,
-      }),
-      this.prisma.category.count({ where }),
-    ]);
+      });
+      const total = await tx.category.count({ where });
+
+      return { items, total };
+    });
 
     return {
       items: items.map((category) => toCategoryEntity(category)),

@@ -53,16 +53,18 @@ export class ProductService {
     const where = buildProductWhereInput(query);
     const orderBy = buildProductOrderByInput(query);
 
-    const [items, total] = await this.prisma.$transaction([
-      this.prisma.product.findMany({
+    const { items, total } = await this.prisma.$transaction(async (tx) => {
+      const items = await tx.product.findMany({
         where,
         include: productInclude,
         orderBy,
         skip: (page - 1) * limit,
         take: limit,
-      }),
-      this.prisma.product.count({ where }),
-    ]);
+      });
+      const total = await tx.product.count({ where });
+
+      return { items, total };
+    });
 
     return {
       items: items.map((product) => toProductEntity(product)),

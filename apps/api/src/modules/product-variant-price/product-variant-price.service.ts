@@ -47,16 +47,18 @@ export class ProductVariantPriceService {
     const where = this.buildWhereInput(variantId, query);
     const orderBy = this.buildOrderByInput(query);
 
-    const [items, total] = await this.prisma.$transaction([
-      this.prisma.productVariantPrice.findMany({
+    const { items, total } = await this.prisma.$transaction(async (tx) => {
+      const items = await tx.productVariantPrice.findMany({
         where,
         include: productVariantPriceInclude,
         orderBy,
         skip: (page - 1) * limit,
         take: limit,
-      }),
-      this.prisma.productVariantPrice.count({ where }),
-    ]);
+      });
+      const total = await tx.productVariantPrice.count({ where });
+
+      return { items, total };
+    });
 
     return {
       items: items.map((price) => toProductVariantPriceEntity(price)),

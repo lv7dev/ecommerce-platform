@@ -121,16 +121,17 @@ export class PasswordResetService {
       resetPasswordDto.password,
     );
 
-    await this.prisma.$transaction([
-      this.prisma.user.update({
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
         where: { id: passwordResetToken.userId },
         data: { passwordHash },
-      }),
-      this.prisma.passwordResetToken.update({
+      });
+
+      await tx.passwordResetToken.update({
         where: { id: passwordResetToken.id },
         data: { usedAt: new Date() },
-      }),
-    ]);
+      });
+    });
 
     await this.authSessionService.revokeActiveSessionsForUser(
       passwordResetToken.userId,

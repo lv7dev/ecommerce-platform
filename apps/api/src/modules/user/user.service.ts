@@ -27,16 +27,18 @@ export class UserService {
     const limit = query.limit ?? 20;
     const where = this.buildWhereInput(query);
 
-    const [items, total] = await this.prisma.$transaction([
-      this.prisma.user.findMany({
+    const { items, total } = await this.prisma.$transaction(async (tx) => {
+      const items = await tx.user.findMany({
         where,
         include: userInclude,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
-      }),
-      this.prisma.user.count({ where }),
-    ]);
+      });
+      const total = await tx.user.count({ where });
+
+      return { items, total };
+    });
 
     return {
       items: items.map((user) => toUserEntity(user)),

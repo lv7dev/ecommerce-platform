@@ -100,20 +100,21 @@ export class EmailVerificationService {
       emailVerificationToken.user.status,
     );
 
-    const [, updatedUser] = await this.prisma.$transaction([
-      this.prisma.emailVerificationToken.update({
+    const updatedUser = await this.prisma.$transaction(async (tx) => {
+      await tx.emailVerificationToken.update({
         where: { id: emailVerificationToken.id },
         data: { usedAt: new Date() },
-      }),
-      this.prisma.user.update({
+      });
+
+      return tx.user.update({
         where: { id: emailVerificationToken.userId },
         data: {
           emailVerifiedAt:
             emailVerificationToken.user.emailVerifiedAt ?? new Date(),
         },
         include: userInclude,
-      }),
-    ]);
+      });
+    });
 
     await this.authAuditService.create({
       action: 'auth.email_verified',

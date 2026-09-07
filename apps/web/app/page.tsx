@@ -1,4 +1,5 @@
 import { ArrowRight, ShoppingBag } from 'lucide-react';
+import Link from 'next/link';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
 
@@ -19,13 +20,17 @@ export default function Home() {
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Button>
-            <ShoppingBag className="size-4" />
-            Start catalog
+          <Button asChild>
+            <Link href="/products">
+              <ShoppingBag className="size-4" />
+              Start catalog
+            </Link>
           </Button>
-          <Button variant="outline">
-            View architecture
-            <ArrowRight className="size-4" />
+          <Button asChild variant="outline">
+            <Link href="/login">
+              Sign in
+              <ArrowRight className="size-4" />
+            </Link>
           </Button>
         </div>
       </section>

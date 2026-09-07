@@ -1,6 +1,8 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+overrides:
+  pg: 8.18.0
 allowBuilds:
   '@prisma/engines': true
   '@scarf/scarf': false

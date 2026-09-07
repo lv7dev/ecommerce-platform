@@ -40,16 +40,18 @@ export class OrderService {
     const limit = query.limit ?? 20;
     const where: Prisma.OrderWhereInput = { userId };
 
-    const [items, total] = await this.prisma.$transaction([
-      this.prisma.order.findMany({
+    const { items, total } = await this.prisma.$transaction(async (tx) => {
+      const items = await tx.order.findMany({
         where,
         include: orderInclude,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
-      }),
-      this.prisma.order.count({ where }),
-    ]);
+      });
+      const total = await tx.order.count({ where });
+
+      return { items, total };
+    });
 
     return {
       items: items.map((order) => toOrderEntity(order)),
@@ -93,16 +95,18 @@ export class OrderService {
         : undefined,
     };
 
-    const [items, total] = await this.prisma.$transaction([
-      this.prisma.order.findMany({
+    const { items, total } = await this.prisma.$transaction(async (tx) => {
+      const items = await tx.order.findMany({
         where,
         include: orderInclude,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
-      }),
-      this.prisma.order.count({ where }),
-    ]);
+      });
+      const total = await tx.order.count({ where });
+
+      return { items, total };
+    });
 
     return {
       items: items.map((order) => toOrderEntity(order)),

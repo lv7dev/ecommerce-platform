@@ -55,16 +55,18 @@ export class OptionValueService {
     const where = this.buildWhereInput(optionId, query);
     const orderBy = this.buildOrderByInput(query);
 
-    const [items, total] = await this.prisma.$transaction([
-      this.prisma.optionValue.findMany({
+    const { items, total } = await this.prisma.$transaction(async (tx) => {
+      const items = await tx.optionValue.findMany({
         where,
         include: optionValueInclude,
         orderBy,
         skip: (page - 1) * limit,
         take: limit,
-      }),
-      this.prisma.optionValue.count({ where }),
-    ]);
+      });
+      const total = await tx.optionValue.count({ where });
+
+      return { items, total };
+    });
 
     return {
       items: items.map((optionValue) => toOptionValueEntity(optionValue)),

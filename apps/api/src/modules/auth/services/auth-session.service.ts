@@ -153,15 +153,17 @@ export class AuthSessionService {
     sessionId: string;
     sub: string;
   }): Promise<AuthenticatedUser> {
-    const [user, session] = await this.prisma.$transaction([
-      this.prisma.user.findUnique({
+    const { session, user } = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
         where: { id: payload.sub },
         include: userInclude,
-      }),
-      this.prisma.authSession.findUnique({
+      });
+      const session = await tx.authSession.findUnique({
         where: { id: payload.sessionId },
-      }),
-    ]);
+      });
+
+      return { session, user };
+    });
 
     if (!user || !session || session.userId !== user.id) {
       throw new UnauthorizedException('Invalid token');
@@ -177,6 +179,7 @@ export class AuthSessionService {
 
     return {
       email: userEntity.email,
+      emailVerifiedAt: userEntity.emailVerifiedAt,
       id: userEntity.id,
       name: userEntity.name,
       permissions: userEntity.permissions.map((permission) => permission.code),
