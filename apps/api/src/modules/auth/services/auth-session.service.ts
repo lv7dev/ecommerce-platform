@@ -59,11 +59,15 @@ export class AuthSessionService {
     };
   }
 
-  async refresh(refreshToken?: string): Promise<AuthTokenEntity> {
+  async refresh(
+    refreshToken: string | undefined,
+    context: AuthRequestContext,
+  ): Promise<AuthTokenEntity> {
     if (!refreshToken) {
       throw new UnauthorizedException('Missing refresh token');
     }
 
+    const now = new Date();
     const sessionId =
       this.authOpaqueTokenService.getRefreshTokenSessionId(refreshToken);
     const session = await this.prisma.authSession.findUnique({
@@ -75,7 +79,7 @@ export class AuthSessionService {
       },
     });
 
-    if (!session || session.revokedAt || session.expiresAt <= new Date()) {
+    if (!session || session.revokedAt || session.expiresAt <= now) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
@@ -85,6 +89,11 @@ export class AuthSessionService {
         session.refreshTokenHash,
       )
     ) {
+      await this.revokeSessionForRefreshTokenReuse(
+        session.id,
+        session.userId,
+        context,
+      );
       throw new UnauthorizedException('Invalid refresh token');
     }
 
@@ -93,14 +102,57 @@ export class AuthSessionService {
     const nextRefreshToken = this.authOpaqueTokenService.createRefreshToken(
       session.id,
     );
+    const nextRefreshTokenHash =
+      this.authOpaqueTokenService.hash(nextRefreshToken);
+    const nextRefreshTokenExpiresAt = this.getRefreshTokenExpiresAt();
 
-    await this.prisma.authSession.update({
-      where: { id: session.id },
-      data: {
-        expiresAt: this.getRefreshTokenExpiresAt(),
-        refreshTokenHash: this.authOpaqueTokenService.hash(nextRefreshToken),
-      },
+    const rotated = await this.prisma.$transaction(async (tx) => {
+      const rotation = await tx.authSession.updateMany({
+        where: {
+          expiresAt: {
+            gt: now,
+          },
+          id: session.id,
+          refreshTokenHash: session.refreshTokenHash,
+          revokedAt: null,
+        },
+        data: {
+          expiresAt: nextRefreshTokenExpiresAt,
+          refreshTokenHash: nextRefreshTokenHash,
+        },
+      });
+
+      if (rotation.count === 1) {
+        return true;
+      }
+
+      await tx.authSession.updateMany({
+        where: {
+          id: session.id,
+          revokedAt: null,
+        },
+        data: {
+          revokedAt: now,
+        },
+      });
+
+      return false;
     });
+
+    if (!rotated) {
+      await this.authAuditService.create({
+        action: 'auth.refresh_token_reuse_detected',
+        actorId: session.userId,
+        metadata: {
+          reason: 'refresh_token_rotation_conflict',
+        },
+        targetId: session.id,
+        targetType: 'AuthSession',
+        ...context,
+      });
+
+      throw new UnauthorizedException('Invalid refresh token');
+    }
 
     return {
       ...this.createAccessToken(session.user, session.id),
@@ -196,6 +248,35 @@ export class AuthSessionService {
         userId,
       },
       data: { revokedAt: new Date() },
+    });
+  }
+
+  private async revokeSessionForRefreshTokenReuse(
+    sessionId: string,
+    userId: string,
+    context: AuthRequestContext,
+  ): Promise<void> {
+    const now = new Date();
+
+    await this.prisma.authSession.updateMany({
+      where: {
+        id: sessionId,
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: now,
+      },
+    });
+
+    await this.authAuditService.create({
+      action: 'auth.refresh_token_reuse_detected',
+      actorId: userId,
+      metadata: {
+        reason: 'refresh_token_hash_mismatch',
+      },
+      targetId: sessionId,
+      targetType: 'AuthSession',
+      ...context,
     });
   }
 

@@ -120,11 +120,14 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const authTokens = await this.authService.refresh({
-      refreshToken:
-        refreshTokenDto.refreshToken ??
-        this.authCookieService.getRefreshToken(request),
-    });
+    const authTokens = await this.authService.refresh(
+      {
+        refreshToken:
+          refreshTokenDto.refreshToken ??
+          this.authCookieService.getRefreshToken(request),
+      },
+      this.getRequestContext(request),
+    );
 
     this.authCookieService.setAuthCookies(response, authTokens);
 

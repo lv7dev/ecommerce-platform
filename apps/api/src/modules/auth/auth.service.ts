@@ -164,8 +164,14 @@ export class AuthService {
     return this.emailVerificationService.verifyEmail(verifyEmailDto, context);
   }
 
-  refresh(refreshTokenDto: RefreshTokenDto): Promise<AuthTokenEntity> {
-    return this.authSessionService.refresh(refreshTokenDto.refreshToken);
+  refresh(
+    refreshTokenDto: RefreshTokenDto,
+    context: AuthRequestContext,
+  ): Promise<AuthTokenEntity> {
+    return this.authSessionService.refresh(
+      refreshTokenDto.refreshToken,
+      context,
+    );
   }
 
   logout(
