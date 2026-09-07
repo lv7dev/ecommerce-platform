@@ -8,11 +8,14 @@ export type CookieSameSite = (typeof cookieSameSiteValues)[number];
 
 export interface EnvironmentVariables {
   AUTH_ACCESS_COOKIE_NAME: string;
+  AUTH_CSRF_COOKIE_NAME: string;
+  AUTH_CSRF_HEADER_NAME: string;
   AUTH_COOKIE_DOMAIN?: string;
   AUTH_COOKIE_SAMESITE: CookieSameSite;
   AUTH_COOKIE_SECURE: boolean;
   AUTH_REFRESH_COOKIE_NAME: string;
   APP_WEB_URL: string;
+  CSRF_TOKEN_TTL_SECONDS: number;
   DATABASE_URL: string;
   EMAIL_VERIFICATION_TOKEN_TTL_SECONDS: number;
   JWT_ACCESS_SECRET: string;
@@ -73,11 +76,24 @@ export function validateEnvironment(
     config.AUTH_REFRESH_COOKIE_NAME,
     'ep_refresh_token',
   );
+  const authCsrfCookieName = getOptionalString(
+    config.AUTH_CSRF_COOKIE_NAME,
+    'ep_csrf_token',
+  );
+  const authCsrfHeaderName = getOptionalString(
+    config.AUTH_CSRF_HEADER_NAME,
+    'x-csrf-token',
+  ).toLowerCase();
   const authCookieDomain = getOptionalString(config.AUTH_COOKIE_DOMAIN, '');
   const authCookieSameSite = getCookieSameSite(config.AUTH_COOKIE_SAMESITE);
+  const csrfTokenTtlSeconds = getPositiveInteger(
+    config.CSRF_TOKEN_TTL_SECONDS,
+    24 * 60 * 60,
+    'CSRF_TOKEN_TTL_SECONDS',
+  );
   const authCookieSecure = getBoolean(
     config.AUTH_COOKIE_SECURE,
-    nodeEnv === 'production',
+    authCookieSameSite === 'none' || nodeEnv === 'production',
     'AUTH_COOKIE_SECURE',
   );
   if (authCookieSameSite === 'none' && !authCookieSecure) {
@@ -97,11 +113,14 @@ export function validateEnvironment(
   return {
     ...config,
     AUTH_ACCESS_COOKIE_NAME: authAccessCookieName,
+    AUTH_CSRF_COOKIE_NAME: authCsrfCookieName,
+    AUTH_CSRF_HEADER_NAME: authCsrfHeaderName,
     AUTH_COOKIE_DOMAIN: authCookieDomain || undefined,
     AUTH_COOKIE_SAMESITE: authCookieSameSite,
     AUTH_COOKIE_SECURE: authCookieSecure,
     AUTH_REFRESH_COOKIE_NAME: authRefreshCookieName,
     APP_WEB_URL: appWebUrl,
+    CSRF_TOKEN_TTL_SECONDS: csrfTokenTtlSeconds,
     DATABASE_URL: databaseUrl,
     EMAIL_VERIFICATION_TOKEN_TTL_SECONDS: emailVerificationTokenTtlSeconds,
     JWT_ACCESS_SECRET: jwtAccessSecret,
@@ -194,7 +213,7 @@ function getMailProvider(value: unknown): MailProvider {
 
 function getCookieSameSite(value: unknown): CookieSameSite {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    return 'lax';
+    return 'none';
   }
 
   const normalizedValue = value.trim().toLowerCase();

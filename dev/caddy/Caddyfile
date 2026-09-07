@@ -1,0 +1,14 @@
+{
+	local_certs
+	servers {
+		protocols h1 h2
+	}
+}
+
+shop.ecommerce.localhost:3443 {
+	reverse_proxy 127.0.0.1:3000
+}
+
+api.ecommerce.localhost:4443 {
+	reverse_proxy 127.0.0.1:4000
+}

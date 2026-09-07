@@ -18,6 +18,14 @@ export class AuthCookieService {
     return this.getCookie(request, this.getRefreshCookieName());
   }
 
+  getCsrfToken(request: Request): string | undefined {
+    return this.getCookie(request, this.getCsrfCookieName());
+  }
+
+  getCsrfHeaderName(): string {
+    return this.configService.get('AUTH_CSRF_HEADER_NAME', { infer: true });
+  }
+
   setAuthCookies(response: Response, authTokens: AuthTokenEntity): void {
     response.cookie(this.getAccessCookieName(), authTokens.accessToken, {
       ...this.getSharedCookieOptions(),
@@ -33,6 +41,21 @@ export class AuthCookieService {
     });
   }
 
+  setCsrfCookie(
+    response: Response,
+    csrfToken: {
+      token: string;
+    },
+  ): void {
+    response.cookie(this.getCsrfCookieName(), csrfToken.token, {
+      ...this.getSharedCookieOptions(),
+      httpOnly: false,
+      maxAge:
+        this.configService.get('CSRF_TOKEN_TTL_SECONDS', { infer: true }) *
+        1000,
+    });
+  }
+
   clearAuthCookies(response: Response): void {
     response.clearCookie(
       this.getAccessCookieName(),
@@ -42,6 +65,13 @@ export class AuthCookieService {
       this.getRefreshCookieName(),
       this.getClearCookieOptions(),
     );
+  }
+
+  clearCsrfCookie(response: Response): void {
+    response.clearCookie(this.getCsrfCookieName(), {
+      ...this.getClearCookieOptions(),
+      httpOnly: false,
+    });
   }
 
   private getCookie(request: Request, name: string): string | undefined {
@@ -56,6 +86,10 @@ export class AuthCookieService {
 
   private getRefreshCookieName(): string {
     return this.configService.get('AUTH_REFRESH_COOKIE_NAME', { infer: true });
+  }
+
+  private getCsrfCookieName(): string {
+    return this.configService.get('AUTH_CSRF_COOKIE_NAME', { infer: true });
   }
 
   private getSharedCookieOptions(): CookieOptions {

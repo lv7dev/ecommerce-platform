@@ -1,9 +1,16 @@
 import { env } from '@/shared/config/env';
 import type { ApiErrorResponse, ApiSuccessResponse } from '@/shared/types/api';
+import { apiEndpoints } from './endpoints';
 import { ApiClientError, isApiErrorResponse } from './errors';
 
 type QueryValue = string | number | boolean | null | undefined;
 type QueryParams = object;
+
+interface CsrfTokenResult {
+  csrfToken: string;
+  expiresAt: string;
+  headerName: string;
+}
 
 export interface ApiRequestContext {
   init: RequestInit;
@@ -45,6 +52,14 @@ export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
 }
 
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+  return apiRequestOnce<T>(path, options, true);
+}
+
+async function apiRequestOnce<T>(
+  path: string,
+  options: ApiRequestOptions,
+  retryOnCsrfError: boolean,
+): Promise<T> {
   const request = await createRequestContext(path, options);
   let response: Response;
 
@@ -65,8 +80,20 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   });
 
   if (!responseContext.response.ok) {
+    const error = createApiError(responseContext);
+
+    if (
+      retryOnCsrfError &&
+      shouldAttachCsrfHeader(options.method, path) &&
+      isCsrfTokenError(error)
+    ) {
+      clearCsrfToken();
+
+      return apiRequestOnce<T>(path, options, false);
+    }
+
     throw await applyErrorInterceptors({
-      error: createApiError(responseContext),
+      error,
       payload: responseContext.payload,
       request,
       response: responseContext.response,
@@ -91,12 +118,20 @@ async function createRequestContext(path: string, options: ApiRequestOptions) {
     responseInterceptors,
     ...requestInit
   } = options;
+  const requestHeaders = buildHeaders(headers, body, authToken);
+
+  await attachCsrfHeader({
+    headers: requestHeaders,
+    method: requestInit.method,
+    path,
+  });
+
   const context: ApiRequestContext = {
     init: {
       ...requestInit,
       body: serializeBody(body),
       credentials: requestInit.credentials ?? 'include',
-      headers: buildHeaders(headers, body, authToken),
+      headers: requestHeaders,
     },
     options: {
       ...options,
@@ -109,6 +144,89 @@ async function createRequestContext(path: string, options: ApiRequestOptions) {
   };
 
   return applyRequestInterceptors(context);
+}
+
+let csrfToken: CsrfTokenResult | null = null;
+let csrfTokenPromise: Promise<CsrfTokenResult> | null = null;
+
+async function attachCsrfHeader(input: { headers: Headers; method?: string; path: string }) {
+  if (!shouldAttachCsrfHeader(input.method, input.path)) {
+    return;
+  }
+
+  const token = await getCsrfToken();
+
+  if (!input.headers.has(token.headerName)) {
+    input.headers.set(token.headerName, token.csrfToken);
+  }
+}
+
+function shouldAttachCsrfHeader(method = 'GET', path: string) {
+  return (
+    !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase()) && path !== apiEndpoints.auth.csrf
+  );
+}
+
+async function getCsrfToken(): Promise<CsrfTokenResult> {
+  if (csrfToken && new Date(csrfToken.expiresAt).getTime() > Date.now() + 60_000) {
+    return csrfToken;
+  }
+
+  csrfTokenPromise ??= fetchCsrfToken().finally(() => {
+    csrfTokenPromise = null;
+  });
+  csrfToken = await csrfTokenPromise;
+
+  return csrfToken;
+}
+
+function clearCsrfToken() {
+  csrfToken = null;
+}
+
+async function fetchCsrfToken(): Promise<CsrfTokenResult> {
+  const url = buildApiUrl(apiEndpoints.auth.csrf);
+  const request: ApiRequestContext = {
+    init: {
+      credentials: 'include',
+      method: 'GET',
+    },
+    options: {},
+    path: apiEndpoints.auth.csrf,
+    url,
+  };
+  let response: Response;
+
+  try {
+    response = await fetch(url, request.init);
+  } catch (error) {
+    throw createNetworkError(error, request);
+  }
+
+  const payload = await parseResponse(response);
+
+  if (!response.ok) {
+    throw createApiError({
+      payload,
+      request,
+      response,
+    });
+  }
+
+  const token = isApiSuccessResponse<CsrfTokenResult>(payload)
+    ? payload.data
+    : (payload as CsrfTokenResult);
+
+  if (!isCsrfTokenResult(token)) {
+    throw new ApiClientError({
+      message: 'Invalid CSRF token response',
+      method: 'GET',
+      status: response.status,
+      url: url.toString(),
+    });
+  }
+
+  return token;
 }
 
 async function applyRequestInterceptors(context: ApiRequestContext) {
@@ -208,6 +326,19 @@ function isApiSuccessResponse<T>(value: unknown): value is ApiSuccessResponse<T>
   );
 }
 
+function isCsrfTokenResult(value: unknown): value is CsrfTokenResult {
+  return Boolean(
+    value &&
+    typeof value === 'object' &&
+    'csrfToken' in value &&
+    typeof value.csrfToken === 'string' &&
+    'expiresAt' in value &&
+    typeof value.expiresAt === 'string' &&
+    'headerName' in value &&
+    typeof value.headerName === 'string',
+  );
+}
+
 function isQueryValue(value: unknown): value is QueryValue {
   return ['boolean', 'number', 'string', 'undefined'].includes(typeof value) || value === null;
 }
@@ -235,6 +366,12 @@ function createNetworkError(error: unknown, request: ApiRequestContext) {
     status: 0,
     url: request.url.toString(),
   });
+}
+
+function isCsrfTokenError(error: ApiClientError) {
+  const message = getErrorMessage(error.payload) ?? error.message;
+
+  return error.status === 403 && /\bcsrf\b/i.test(message);
 }
 
 function getErrorMessage(payload?: ApiErrorResponse) {

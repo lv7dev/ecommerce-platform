@@ -12,10 +12,13 @@ describe('AuthCookieService', () => {
     get: jest.fn((key: keyof EnvironmentVariables) => {
       const values: Partial<EnvironmentVariables> = {
         AUTH_ACCESS_COOKIE_NAME: 'ep_access_token',
+        AUTH_CSRF_COOKIE_NAME: 'ep_csrf_token',
+        AUTH_CSRF_HEADER_NAME: 'x-csrf-token',
         AUTH_COOKIE_DOMAIN: undefined,
         AUTH_COOKIE_SAMESITE: 'lax',
         AUTH_COOKIE_SECURE: false,
         AUTH_REFRESH_COOKIE_NAME: 'ep_refresh_token',
+        CSRF_TOKEN_TTL_SECONDS: 86_400,
         JWT_REFRESH_TOKEN_TTL_SECONDS: 2_592_000,
       };
 
@@ -106,6 +109,41 @@ describe('AuthCookieService', () => {
     expect(clearCookieMock).toHaveBeenCalledWith('ep_refresh_token', {
       domain: undefined,
       httpOnly: true,
+      path: '/',
+      sameSite: 'lax',
+      secure: false,
+    });
+  });
+
+  it('sets a JavaScript-readable CSRF cookie', () => {
+    const cookieMock = jest.fn();
+    const response = {
+      cookie: cookieMock,
+    } as unknown as Response;
+
+    service.setCsrfCookie(response, { token: 'csrf-token' });
+
+    expect(cookieMock).toHaveBeenCalledWith('ep_csrf_token', 'csrf-token', {
+      domain: undefined,
+      httpOnly: false,
+      maxAge: 86_400_000,
+      path: '/',
+      sameSite: 'lax',
+      secure: false,
+    });
+  });
+
+  it('clears the CSRF cookie with matching cookie options', () => {
+    const clearCookieMock = jest.fn();
+    const response = {
+      clearCookie: clearCookieMock,
+    } as unknown as Response;
+
+    service.clearCsrfCookie(response);
+
+    expect(clearCookieMock).toHaveBeenCalledWith('ep_csrf_token', {
+      domain: undefined,
+      httpOnly: false,
       path: '/',
       sameSite: 'lax',
       secure: false,

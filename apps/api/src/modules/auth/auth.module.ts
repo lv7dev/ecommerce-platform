@@ -1,16 +1,19 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { minutes, ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from '../../database/prisma/prisma.module';
 import { EmailModule } from '../email/email.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './guards/auth.guard';
+import { CsrfGuard } from './guards/csrf.guard';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { AuthAccountService } from './services/auth-account.service';
 import { AuthAuditService } from './services/auth-audit.service';
 import { AuthCookieService } from './services/auth-cookie.service';
 import { AuthOpaqueTokenService } from './services/auth-opaque-token.service';
 import { AuthSessionService } from './services/auth-session.service';
+import { CsrfTokenService } from './services/csrf-token.service';
 import { EmailVerificationService } from './services/email-verification.service';
 import { JwtTokenService } from './services/jwt-token.service';
 import { PasswordService } from './services/password.service';
@@ -41,7 +44,12 @@ import { PasswordResetService } from './services/password-reset.service';
     AuthCookieService,
     AuthOpaqueTokenService,
     AuthSessionService,
+    CsrfTokenService,
     EmailVerificationService,
+    {
+      provide: APP_GUARD,
+      useClass: CsrfGuard,
+    },
     AuthGuard,
     PermissionsGuard,
     JwtTokenService,

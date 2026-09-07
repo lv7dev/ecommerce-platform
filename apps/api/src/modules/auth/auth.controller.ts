@@ -38,10 +38,12 @@ import {
   ForgotPasswordEntity,
   ResetPasswordEntity,
 } from './entities/password-reset.entity';
+import { CsrfTokenEntity } from './entities/csrf-token.entity';
 import { AuthGuard } from './guards/auth.guard';
 import { AuthService } from './auth.service';
 import { AuthThrottle } from './decorators/auth-throttle.decorator';
 import { AuthCookieService } from './services/auth-cookie.service';
+import { CsrfTokenService } from './services/csrf-token.service';
 import type { AuthenticatedUser } from './types/authenticated-user.type';
 
 @ApiTags('Auth')
@@ -50,7 +52,23 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly authCookieService: AuthCookieService,
+    private readonly csrfTokenService: CsrfTokenService,
   ) {}
+
+  @ApiOperation({ summary: 'Issue a CSRF token for browser mutations' })
+  @ApiOkResponse({ type: CsrfTokenEntity })
+  @Get('csrf')
+  csrf(@Res({ passthrough: true }) response: Response): CsrfTokenEntity {
+    const csrfToken = this.csrfTokenService.createToken();
+
+    this.authCookieService.setCsrfCookie(response, csrfToken);
+
+    return {
+      csrfToken: csrfToken.token,
+      expiresAt: csrfToken.expiresAt.toISOString(),
+      headerName: this.authCookieService.getCsrfHeaderName(),
+    };
+  }
 
   @ApiOperation({ summary: 'Register a user account' })
   @ApiCreatedResponse({ type: AuthSessionEntity })
@@ -132,6 +150,7 @@ export class AuthController {
     );
 
     this.authCookieService.clearAuthCookies(response);
+    this.authCookieService.clearCsrfCookie(response);
 
     return logoutResult;
   }

@@ -1,5 +1,6 @@
 export const apiEndpoints = {
   auth: {
+    csrf: '/auth/csrf',
     forgotPassword: '/auth/password/forgot',
     login: '/auth/login',
     logout: '/auth/logout',
