@@ -59,14 +59,7 @@ export function buildProductUpdateInput(
           })),
         }
       : undefined,
-    variants: dto.variants
-      ? {
-          deleteMany: {},
-          create: dto.variants.map((variant) =>
-            buildProductVariantCreateInputItem(variant),
-          ),
-        }
-      : undefined,
+    variants: undefined,
   };
 }
 

@@ -17,6 +17,15 @@ import {
 import { ProductVariantPriceDto } from './product-variant-price.dto';
 
 export class ProductVariantDto {
+  @ApiPropertyOptional({
+    description:
+      'Existing variant ID. Used when updating products to keep historical cart and order references stable.',
+    example: '018f4d7b-7ef3-4b77-9f35-05a34f968d7e',
+  })
+  @IsOptional()
+  @IsUUID('4')
+  id?: string;
+
   @ApiProperty({ example: 'BASIC-TEE-BLACK-M' })
   @IsString()
   @IsNotEmpty()

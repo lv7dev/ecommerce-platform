@@ -141,7 +141,7 @@ describe('product mutation builder', () => {
     });
   });
 
-  it('replaces only submitted relations when building update input', () => {
+  it('replaces submitted non-variant relations and leaves variants for service sync', () => {
     expect(
       buildProductUpdateInput({
         brand: null,
@@ -198,31 +198,7 @@ describe('product mutation builder', () => {
         ],
         deleteMany: {},
       },
-      variants: {
-        create: [
-          {
-            barcode: '8938505974123',
-            imageUrl: 'https://placehold.co/800x800?text=Tee',
-            isActive: false,
-            optionValues: undefined,
-            prices: {
-              create: [
-                {
-                  amountMinor: BigInt(199000),
-                  compareAtAmountMinor: null,
-                  currency: Currency.VND,
-                  endsAt: null,
-                  isActive: false,
-                  startsAt: null,
-                },
-              ],
-            },
-            sku: 'BASIC-TEE-WHITE-M',
-            stock: 0,
-          },
-        ],
-        deleteMany: {},
-      },
+      variants: undefined,
     });
   });
 });
