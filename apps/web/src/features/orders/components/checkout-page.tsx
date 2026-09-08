@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, CreditCard, MailWarning, MapPin, Package, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { RequestEmailVerificationButton } from '@/features/auth/components/request-email-verification-button';
 import { useCurrentUser } from '@/features/auth/hooks/use-current-user';
@@ -78,6 +79,11 @@ function CheckoutContent({ defaultFullName }: { defaultFullName: string }) {
   const router = useRouter();
   const toast = useToast();
   const cartQuery = useQuery(cartQueryOptions(true));
+  const checkoutAttemptRef = useRef<CheckoutAttempt>({
+    cartSignature: null,
+    idempotencyKey: createCheckoutIdempotencyKey(),
+  });
+  const cartSignature = cartQuery.data ? getCartSignature(cartQuery.data) : null;
   const form = useForm<CheckoutFormValues>({
     defaultValues: {
       addressLine1: '',
@@ -96,23 +102,11 @@ function CheckoutContent({ defaultFullName }: { defaultFullName: string }) {
   const checkoutMutation = useMutation({
     mutationFn: (values: CheckoutFormValues) =>
       checkoutOrder(
-        {
-          note: emptyToUndefined(values.note),
-          shippingAddress: {
-            addressLine1: values.addressLine1,
-            addressLine2: emptyToUndefined(values.addressLine2),
-            countryCode: values.countryCode,
-            district: values.district,
-            fullName: values.fullName,
-            phone: values.phone,
-            postalCode: emptyToUndefined(values.postalCode),
-            province: values.province,
-            ward: emptyToUndefined(values.ward),
-          },
-        },
-        `checkout_${crypto.randomUUID()}`,
+        buildCheckoutInput(values),
+        getCheckoutAttemptKey(checkoutAttemptRef, cartSignature),
       ),
     onSuccess: (order) => {
+      resetCheckoutAttempt(checkoutAttemptRef);
       queryClient.setQueryData(queryKeys.orders.detail(order.id), order);
       void queryClient.invalidateQueries({ queryKey: queryKeys.cart.detail });
       void queryClient.invalidateQueries({ queryKey: ['orders', 'list'] });
@@ -123,6 +117,14 @@ function CheckoutContent({ defaultFullName }: { defaultFullName: string }) {
       router.replace(`/orders/${order.id}`);
     },
   });
+
+  useEffect(() => {
+    if (!cartSignature) {
+      return;
+    }
+
+    resetCheckoutAttemptWhenCartChanges(checkoutAttemptRef, cartSignature);
+  }, [cartSignature]);
 
   if (cartQuery.isLoading) {
     return <CheckoutSkeleton />;
@@ -309,6 +311,83 @@ function CheckoutContent({ defaultFullName }: { defaultFullName: string }) {
       </div>
     </main>
   );
+}
+
+interface CheckoutAttempt {
+  cartSignature: string | null;
+  idempotencyKey: string;
+}
+
+function buildCheckoutInput(values: CheckoutFormValues) {
+  return {
+    note: emptyToUndefined(values.note),
+    shippingAddress: {
+      addressLine1: values.addressLine1,
+      addressLine2: emptyToUndefined(values.addressLine2),
+      countryCode: values.countryCode,
+      district: values.district,
+      fullName: values.fullName,
+      phone: values.phone,
+      postalCode: emptyToUndefined(values.postalCode),
+      province: values.province,
+      ward: emptyToUndefined(values.ward),
+    },
+  };
+}
+
+function createCheckoutIdempotencyKey() {
+  return `checkout_${crypto.randomUUID()}`;
+}
+
+function getCheckoutAttemptKey(
+  checkoutAttemptRef: React.MutableRefObject<CheckoutAttempt>,
+  cartSignature: string | null,
+) {
+  if (cartSignature) {
+    resetCheckoutAttemptWhenCartChanges(checkoutAttemptRef, cartSignature);
+  }
+
+  return checkoutAttemptRef.current.idempotencyKey;
+}
+
+function resetCheckoutAttempt(checkoutAttemptRef: React.MutableRefObject<CheckoutAttempt>) {
+  checkoutAttemptRef.current = {
+    cartSignature: null,
+    idempotencyKey: createCheckoutIdempotencyKey(),
+  };
+}
+
+function resetCheckoutAttemptWhenCartChanges(
+  checkoutAttemptRef: React.MutableRefObject<CheckoutAttempt>,
+  cartSignature: string,
+) {
+  if (checkoutAttemptRef.current.cartSignature === cartSignature) {
+    return;
+  }
+
+  checkoutAttemptRef.current = {
+    cartSignature,
+    idempotencyKey: createCheckoutIdempotencyKey(),
+  };
+}
+
+function getCartSignature(cart: Cart) {
+  return JSON.stringify({
+    currency: cart.currency,
+    id: cart.id,
+    items: cart.items
+      .map((item) => ({
+        availableStock: item.availableStock,
+        id: item.id,
+        isAvailable: item.isAvailable,
+        lineTotalMinor: item.lineTotalMinor,
+        quantity: item.quantity,
+        unitAmountMinor: item.unitAmountMinor,
+        variantId: item.variantId,
+      }))
+      .sort((left, right) => left.id.localeCompare(right.id)),
+    subtotalMinor: cart.subtotalMinor,
+  });
 }
 
 function emptyToUndefined(value: string) {
