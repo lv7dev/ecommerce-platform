@@ -66,6 +66,7 @@ export function getLocalizedTranslation(translations: ProductTranslation[], loca
 
 export function getPrimaryVariant(variants: ProductEmbeddedVariant[], currency: Currency) {
   return (
+    getPurchasableVariant(variants, currency) ??
     variants.find(
       (variant) =>
         variant.isActive && variant.prices.some((price) => isUsablePrice(price, currency)),
@@ -73,6 +74,17 @@ export function getPrimaryVariant(variants: ProductEmbeddedVariant[], currency: 
     variants.find((variant) => variant.isActive) ??
     variants[0] ??
     null
+  );
+}
+
+export function getPurchasableVariant(variants: ProductEmbeddedVariant[], currency: Currency) {
+  return (
+    variants.find(
+      (variant) =>
+        variant.isActive &&
+        variant.availableStock > 0 &&
+        Boolean(getActivePrice(variant.prices, currency)),
+    ) ?? null
   );
 }
 

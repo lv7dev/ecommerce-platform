@@ -11,6 +11,10 @@ export const queryKeys = {
   categories: {
     list: (query?: ListQuery) => ['categories', 'list', query ?? {}] as const,
   },
+  orders: {
+    detail: (id: string) => ['orders', 'detail', id] as const,
+    list: (query?: ListQuery) => ['orders', 'list', query ?? {}] as const,
+  },
   products: {
     detail: (idOrSlug: string) => ['products', 'detail', idOrSlug] as const,
     list: (query?: ListQuery) => ['products', 'list', query ?? {}] as const,

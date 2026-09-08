@@ -8,8 +8,8 @@ import { Button } from '@/shared/ui/button';
 import { Price } from '@/shared/ui/price';
 import type { Currency, Locale, Product } from '../types';
 import {
-  getActivePrice,
   getPrimaryVariant,
+  getPurchasableVariant,
   toGuestCartItem,
   toProductCardViewModel,
 } from '../product-view';
@@ -23,15 +23,10 @@ interface ProductCardProps {
 export function ProductCard({ currency = 'VND', locale = 'vi', product }: ProductCardProps) {
   const productView = toProductCardViewModel(product, locale, currency);
   const primaryVariant = getPrimaryVariant(product.variants, currency);
-  const purchasableVariants = product.variants.filter(
-    (variant) =>
-      product.status === 'ACTIVE' &&
-      variant.isActive &&
-      variant.availableStock > 0 &&
-      Boolean(getActivePrice(variant.prices, currency)),
-  );
+  const purchasableVariant =
+    product.status === 'ACTIVE' ? getPurchasableVariant(product.variants, currency) : null;
   const hasMultipleVariants = product.variants.length > 1;
-  const hasPurchasableVariant = purchasableVariants.length > 0;
+  const hasPurchasableVariant = Boolean(purchasableVariant);
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm transition-colors hover:border-primary/40">

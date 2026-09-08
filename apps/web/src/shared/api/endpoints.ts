@@ -22,7 +22,12 @@ export const apiEndpoints = {
     list: '/categories',
   },
   checkout: {
-    root: '/orders/checkout',
+    root: '/checkout',
+  },
+  orders: {
+    cancel: (id: string) => `/orders/${id}/cancel`,
+    detail: (id: string) => `/orders/${id}`,
+    list: '/orders',
   },
   products: {
     detail: (id: string) => `/products/${id}`,

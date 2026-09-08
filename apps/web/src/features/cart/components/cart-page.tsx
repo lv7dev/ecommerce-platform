@@ -48,7 +48,7 @@ export function CartPage() {
   const updateItemMutation = useCartMutation();
   const removeItemMutation = useCartMutation();
   const clearCartMutation = useCartMutation();
-  const [checkoutGate, setCheckoutGate] = useState<'email' | 'ready' | null>(null);
+  const [checkoutGate, setCheckoutGate] = useState<'email' | null>(null);
   const cart = user ? cartQuery.data : (guestCartQuoteQuery.data ?? getGuestCart(guestItems));
   const itemCount = cart?.items.reduce((total, item) => total + item.quantity, 0) ?? 0;
   const hasGuestCartToMerge = Boolean(user && guestItems.length > 0);
@@ -66,12 +66,17 @@ export function CartPage() {
       return;
     }
 
+    if (guestItems.length > 0) {
+      router.push('/cart/merge?redirectTo=%2Fcart');
+      return;
+    }
+
     if (!user.emailVerifiedAt) {
       setCheckoutGate('email');
       return;
     }
 
-    setCheckoutGate('ready');
+    router.push('/checkout');
   }
 
   useEffect(() => {
@@ -281,12 +286,6 @@ export function CartPage() {
                 </p>
                 <RequestEmailVerificationButton className="mt-3 w-full" />
               </div>
-            ) : null}
-            {checkoutGate === 'ready' ? (
-              <p className="mt-4 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm text-muted-foreground">
-                Your account is ready for checkout. The next step is wiring the order checkout
-                screen.
-              </p>
             ) : null}
           </div>
         </aside>

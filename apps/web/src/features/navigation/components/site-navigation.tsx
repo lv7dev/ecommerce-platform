@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Home, Menu, Package, ShoppingCart, UserCircle, X } from 'lucide-react';
+import { Home, ListOrdered, Menu, Package, ShoppingCart, UserCircle, X } from 'lucide-react';
 import { LogoutButton } from '@/features/auth/components/logout-button';
 import { useCurrentUser } from '@/features/auth/hooks/use-current-user';
 import { cartQueryOptions } from '@/features/cart/queries';
@@ -64,6 +64,10 @@ export function SiteNavigation() {
                 <UserCircle className="size-4" />
                 Account
               </NavLink>
+              <NavLink href="/orders" active={isActivePath(pathname, '/orders')}>
+                <ListOrdered className="size-4" />
+                Orders
+              </NavLink>
               <LogoutButton size="sm" />
             </>
           ) : (
@@ -121,6 +125,14 @@ export function SiteNavigation() {
                 >
                   <UserCircle className="size-4" />
                   Account
+                </MobileNavLink>
+                <MobileNavLink
+                  href="/orders"
+                  active={isActivePath(pathname, '/orders')}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <ListOrdered className="size-4" />
+                  Orders
                 </MobileNavLink>
                 <LogoutButton
                   className="w-full justify-start"
