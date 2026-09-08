@@ -9,6 +9,7 @@ import { PrismaService } from '../../database/prisma/prisma.service';
 import { isPrismaError } from '../../common/helpers/prisma-error.helper';
 import { cartInclude } from './constants/cart.include';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
+import { MergeCartDto } from './dto/merge-cart.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 import { CartEntity } from './entities/cart.entity';
 import {
@@ -128,6 +129,92 @@ export class CartService {
     });
 
     return toCartEntity(await this.getOrCreateCart(userId));
+  }
+
+  async merge(userId: string, mergeCartDto: MergeCartDto): Promise<CartEntity> {
+    const itemsByVariantId = new Map<string, number>();
+
+    for (const item of mergeCartDto.items) {
+      if (itemsByVariantId.has(item.variantId)) {
+        throw new BadRequestException(
+          'Duplicate product variant in merge cart',
+        );
+      }
+
+      itemsByVariantId.set(item.variantId, item.quantity);
+    }
+
+    try {
+      const cart = await this.prisma.$transaction(
+        async (tx) => {
+          const cart = await tx.cart.upsert({
+            where: { userId },
+            create: {
+              userId,
+              currency: Currency.VND,
+            },
+            update: {},
+            include: cartInclude,
+          });
+          const variantIds = [...itemsByVariantId.keys()];
+
+          for (const [variantId, quantity] of itemsByVariantId) {
+            await this.ensureVariantCanBeAdded(
+              variantId,
+              cart.currency,
+              quantity,
+              tx,
+            );
+          }
+
+          await tx.cartItem.deleteMany({
+            where: {
+              cartId: cart.id,
+              ...(variantIds.length
+                ? { variantId: { notIn: variantIds } }
+                : {}),
+            },
+          });
+
+          for (const [variantId, quantity] of itemsByVariantId) {
+            await tx.cartItem.upsert({
+              where: {
+                cartId_variantId: {
+                  cartId: cart.id,
+                  variantId,
+                },
+              },
+              create: {
+                cartId: cart.id,
+                variantId,
+                quantity,
+              },
+              update: {
+                quantity,
+              },
+            });
+          }
+
+          return tx.cart.findUniqueOrThrow({
+            where: { id: cart.id },
+            include: cartInclude,
+          });
+        },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        },
+      );
+
+      return toCartEntity(cart);
+    } catch (error) {
+      if (isPrismaError(error, 'P2034')) {
+        throw new ConflictException(
+          'Cart merge conflicted with another transaction, please retry',
+        );
+      }
+
+      throw error;
+    }
   }
 
   async removeItem(userId: string, cartItemId: string): Promise<CartEntity> {

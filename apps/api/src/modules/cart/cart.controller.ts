@@ -30,6 +30,7 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { CartService } from './cart.service';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
+import { MergeCartDto } from './dto/merge-cart.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 import {
   CartEntity,
@@ -98,6 +99,17 @@ export class CartController {
     @Body() addCartItemDto: AddCartItemDto,
   ) {
     return this.cartService.addItem(user.id, addCartItemDto);
+  }
+
+  @ApiOperation({ summary: 'Merge selected cart items into my cart' })
+  @ApiOkResponse(apiSuccessResponseSchema(CartEntity))
+  @Post('merge')
+  @HttpCode(HttpStatus.OK)
+  merge(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() mergeCartDto: MergeCartDto,
+  ) {
+    return this.cartService.merge(user.id, mergeCartDto);
   }
 
   @ApiOperation({ summary: 'Update an item quantity in my cart' })

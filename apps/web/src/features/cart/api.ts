@@ -1,6 +1,6 @@
 import { apiRequestWithSessionRefresh } from '@/features/auth/api';
 import { apiEndpoints } from '@/shared/api/endpoints';
-import type { AddCartItemInput, Cart, UpdateCartItemInput } from './types';
+import type { AddCartItemInput, Cart, MergeCartInput, UpdateCartItemInput } from './types';
 
 export function getCart() {
   return apiRequestWithSessionRefresh<Cart>(apiEndpoints.cart.root);
@@ -17,6 +17,13 @@ export function updateCartItem(itemId: string, input: UpdateCartItemInput) {
   return apiRequestWithSessionRefresh<Cart>(apiEndpoints.cart.item(itemId), {
     body: input,
     method: 'PATCH',
+  });
+}
+
+export function mergeCart(input: MergeCartInput) {
+  return apiRequestWithSessionRefresh<Cart>(apiEndpoints.cart.merge, {
+    body: input,
+    method: 'POST',
   });
 }
 

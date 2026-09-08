@@ -7,6 +7,15 @@ export interface UpdateCartItemInput {
   quantity: number;
 }
 
+export interface MergeCartItemInput {
+  quantity: number;
+  variantId: string;
+}
+
+export interface MergeCartInput {
+  items: MergeCartItemInput[];
+}
+
 export interface CartItemOptionValue {
   optionCode: string;
   optionName: string;

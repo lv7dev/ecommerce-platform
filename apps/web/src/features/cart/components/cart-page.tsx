@@ -4,7 +4,16 @@ import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { AlertTriangle, Minus, Package, Plus, RotateCcw, ShoppingBag, Trash2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  Merge,
+  Minus,
+  Package,
+  Plus,
+  RotateCcw,
+  ShoppingBag,
+  Trash2,
+} from 'lucide-react';
 import { RequestEmailVerificationButton } from '@/features/auth/components/request-email-verification-button';
 import { useCurrentUser } from '@/features/auth/hooks/use-current-user';
 import { clearCart, removeCartItem, updateCartItem } from '@/features/cart/api';
@@ -37,6 +46,7 @@ export function CartPage() {
   const [checkoutGate, setCheckoutGate] = useState<'email' | 'ready' | null>(null);
   const cart = user ? cartQuery.data : getGuestCart(guestItems);
   const itemCount = cart?.items.reduce((total, item) => total + item.quantity, 0) ?? 0;
+  const hasGuestCartToMerge = Boolean(user && guestItems.length > 0);
   const hasUnavailableItems = cart?.items.some((item) => !item.isAvailable) ?? false;
   const mutationError =
     updateItemMutation.error ?? removeItemMutation.error ?? clearCartMutation.error;
@@ -127,6 +137,29 @@ export function CartPage() {
           </Button>
         </div>
       </div>
+
+      {hasGuestCartToMerge ? (
+        <div className="mb-6 rounded-lg border border-warning/50 bg-warning/10 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <Merge className="mt-0.5 size-4 shrink-0 text-warning" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Local cart waiting to merge</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  You still have {guestItems.length} local cart item
+                  {guestItems.length === 1 ? '' : 's'} from before signing in.
+                </p>
+              </div>
+            </div>
+            <Button asChild variant="outline" className="sm:shrink-0">
+              <Link href="/cart/merge?redirectTo=%2Fcart">
+                <Merge className="size-4" />
+                Review merge
+              </Link>
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
         <section className="overflow-hidden rounded-lg border bg-card">

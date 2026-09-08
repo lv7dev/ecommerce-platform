@@ -1,8 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/shared/query/keys';
-import { addCartItem, getCart } from './api';
+import { getCart, mergeCart } from './api';
 import { useCartStore } from './store/cart-store';
-import type { Cart, CartItem } from './types';
 
 export type GuestCartAfterAuthResult =
   | {
@@ -35,7 +34,14 @@ export async function prepareGuestCartAfterAuth(
     };
   }
 
-  await mergeGuestCartToServer(queryClient);
+  try {
+    await mergeGuestCartToServer(queryClient);
+  } catch {
+    return {
+      serverItemCount: 0,
+      status: 'review',
+    };
+  }
 
   return { status: 'merged' };
 }
@@ -47,25 +53,15 @@ export async function mergeGuestCartToServer(queryClient: QueryClient) {
     return;
   }
 
-  const failedItems: CartItem[] = [];
-  let latestCart: Cart | null = null;
+  const latestCart = await mergeCart({
+    items: guestItems.map((item) => ({
+      quantity: item.quantity,
+      variantId: item.variantId,
+    })),
+  });
 
-  for (const item of guestItems) {
-    try {
-      latestCart = await addCartItem({
-        quantity: item.quantity,
-        variantId: item.variantId,
-      });
-    } catch {
-      failedItems.push(item);
-    }
-  }
-
-  useCartStore.getState().setItems(failedItems);
-
-  if (latestCart) {
-    queryClient.setQueryData(queryKeys.cart.detail, latestCart);
-  }
+  useCartStore.getState().clear();
+  queryClient.setQueryData(queryKeys.cart.detail, latestCart);
 
   await queryClient.invalidateQueries({ queryKey: queryKeys.cart.detail });
 }

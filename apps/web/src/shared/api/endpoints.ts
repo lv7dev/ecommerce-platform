@@ -14,6 +14,7 @@ export const apiEndpoints = {
   cart: {
     items: '/cart/items',
     item: (itemId: string) => `/cart/items/${itemId}`,
+    merge: '/cart/merge',
     root: '/cart',
   },
   categories: {

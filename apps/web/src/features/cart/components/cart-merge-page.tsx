@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { ArrowLeft, Database, HardDrive, Merge, Minus, Package, Plus } from 'lucide-react';
 import { getSafeRedirectPath } from '@/features/auth/redirect';
-import { addCartItem, removeCartItem, updateCartItem } from '@/features/cart/api';
+import { mergeCart } from '@/features/cart/api';
 import { useCartStore } from '@/features/cart/store/cart-store';
 import type { Cart, CartItem } from '@/features/cart/types';
 import { getApiErrorMessage } from '@/shared/api/errors';
@@ -81,7 +81,7 @@ export function CartMergePage() {
         throw new Error('Account cart is not loaded');
       }
 
-      return applyCartMerge(cartQuery.data, resolvedCandidates);
+      return applyCartMerge(resolvedCandidates);
     },
     onSuccess: async (cart) => {
       queryClient.setQueryData(queryKeys.cart.detail, cart);
@@ -529,35 +529,15 @@ function clampQuantity(quantity: number, maxQuantity: number) {
   return Math.max(1, Math.min(quantity, maxQuantity));
 }
 
-async function applyCartMerge(serverCart: Cart, candidates: MergeCandidate[]) {
-  let latestCart: Cart = serverCart;
-
-  for (const candidate of candidates) {
-    if (!candidate.selected) {
-      if (candidate.serverItem) {
-        latestCart = await removeCartItem(candidate.serverItem.id);
-      }
-
-      continue;
-    }
-
-    if (candidate.serverItem) {
-      if (candidate.serverItem.quantity !== candidate.quantity) {
-        latestCart = await updateCartItem(candidate.serverItem.id, {
-          quantity: candidate.quantity,
-        });
-      }
-
-      continue;
-    }
-
-    latestCart = await addCartItem({
-      quantity: candidate.quantity,
-      variantId: candidate.variantId,
-    });
-  }
-
-  return latestCart;
+function applyCartMerge(candidates: MergeCandidate[]) {
+  return mergeCart({
+    items: candidates
+      .filter((candidate) => candidate.selected)
+      .map((candidate) => ({
+        quantity: candidate.quantity,
+        variantId: candidate.variantId,
+      })),
+  });
 }
 
 function getCartCurrency(guestItems: CartItem[], serverCart?: Cart) {
