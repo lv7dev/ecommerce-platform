@@ -9,6 +9,10 @@ shop.ecommerce.localhost:3443 {
 	reverse_proxy 127.0.0.1:3000
 }
 
+admin.ecommerce.localhost:3444 {
+	reverse_proxy 127.0.0.1:3001
+}
+
 api.ecommerce.localhost:4443 {
 	reverse_proxy 127.0.0.1:4000
 }

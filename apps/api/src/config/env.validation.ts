@@ -14,6 +14,7 @@ export interface EnvironmentVariables {
   AUTH_COOKIE_SAMESITE: CookieSameSite;
   AUTH_COOKIE_SECURE: boolean;
   AUTH_REFRESH_COOKIE_NAME: string;
+  ADMIN_ORIGIN?: string;
   APP_WEB_URL: string;
   CSRF_TOKEN_TTL_SECONDS: number;
   DATABASE_URL: string;
@@ -60,6 +61,10 @@ export function validateEnvironment(
   const webOrigin = getOptionalString(
     config.WEB_ORIGIN,
     'http://localhost:3000',
+  );
+  const adminOrigin = getOptionalString(
+    config.ADMIN_ORIGIN,
+    'http://localhost:3001',
   );
   const appWebUrl = getOptionalString(config.APP_WEB_URL, webOrigin);
   const mailProvider = getMailProvider(config.MAIL_PROVIDER);
@@ -119,6 +124,7 @@ export function validateEnvironment(
     AUTH_COOKIE_SAMESITE: authCookieSameSite,
     AUTH_COOKIE_SECURE: authCookieSecure,
     AUTH_REFRESH_COOKIE_NAME: authRefreshCookieName,
+    ADMIN_ORIGIN: adminOrigin,
     APP_WEB_URL: appWebUrl,
     CSRF_TOKEN_TTL_SECONDS: csrfTokenTtlSeconds,
     DATABASE_URL: databaseUrl,

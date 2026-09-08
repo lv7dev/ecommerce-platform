@@ -19,7 +19,10 @@ export function configureApp(app: INestApplication): void {
   app.use(cookieParser());
 
   app.enableCors({
-    origin: configService.get('WEB_ORIGIN', { infer: true }),
+    origin: [
+      configService.get('WEB_ORIGIN', { infer: true }),
+      configService.get('ADMIN_ORIGIN', { infer: true }),
+    ].filter((origin): origin is string => Boolean(origin)),
     credentials: true,
   });
 
