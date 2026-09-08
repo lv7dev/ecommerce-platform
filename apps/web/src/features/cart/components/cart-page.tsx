@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AlertTriangle,
   Merge,
@@ -28,7 +28,7 @@ import { ErrorState } from '@/shared/ui/error-state';
 import { Input } from '@/shared/ui/input';
 import { Price } from '@/shared/ui/price';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { cartQueryOptions } from '../queries';
+import { cartQueryOptions, guestCartQuoteQueryOptions } from '../queries';
 
 export function CartPage() {
   const queryClient = useQueryClient();
@@ -38,13 +38,18 @@ export function CartPage() {
   const guestItems = useCartStore((state) => state.items);
   const clearGuestCart = useCartStore((state) => state.clear);
   const removeGuestItem = useCartStore((state) => state.removeItem);
+  const setGuestItems = useCartStore((state) => state.setItems);
   const updateGuestQuantity = useCartStore((state) => state.updateQuantity);
   const cartQuery = useQuery(cartQueryOptions(Boolean(user)));
+  const guestCartCurrency = getGuestCartCurrency(guestItems);
+  const guestCartQuoteQuery = useQuery(
+    guestCartQuoteQueryOptions(guestItems, guestCartCurrency, !user),
+  );
   const updateItemMutation = useCartMutation();
   const removeItemMutation = useCartMutation();
   const clearCartMutation = useCartMutation();
   const [checkoutGate, setCheckoutGate] = useState<'email' | 'ready' | null>(null);
-  const cart = user ? cartQuery.data : getGuestCart(guestItems);
+  const cart = user ? cartQuery.data : (guestCartQuoteQuery.data ?? getGuestCart(guestItems));
   const itemCount = cart?.items.reduce((total, item) => total + item.quantity, 0) ?? 0;
   const hasGuestCartToMerge = Boolean(user && guestItems.length > 0);
   const hasUnavailableItems = cart?.items.some((item) => !item.isAvailable) ?? false;
@@ -69,7 +74,24 @@ export function CartPage() {
     setCheckoutGate('ready');
   }
 
+  useEffect(() => {
+    if (user || !guestCartQuoteQuery.data) {
+      return;
+    }
+
+    setGuestItems(
+      guestCartQuoteQuery.data.items.map((item) => ({
+        ...item,
+        currency: guestCartQuoteQuery.data.currency,
+      })),
+    );
+  }, [guestCartQuoteQuery.data, setGuestItems, user]);
+
   if (user && cartQuery.isLoading) {
+    return <CartPageSkeleton />;
+  }
+
+  if (!user && guestItems.length > 0 && guestCartQuoteQuery.isLoading) {
     return <CartPageSkeleton />;
   }
 
@@ -157,6 +179,20 @@ export function CartPage() {
                 Review merge
               </Link>
             </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {!user && guestCartQuoteQuery.isError ? (
+        <div className="mb-6 rounded-lg border border-warning/50 bg-warning/10 p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Cart refresh failed</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                We are showing the local cart snapshot. Prices and stock may have changed.
+              </p>
+            </div>
           </div>
         </div>
       ) : null}
@@ -260,7 +296,7 @@ export function CartPage() {
 }
 
 function getGuestCart(items: CartItem[]): Cart {
-  const currency = items[0]?.currency ?? 'VND';
+  const currency = getGuestCartCurrency(items);
   const subtotalMinor = items.reduce(
     (total, item) => (item.lineTotalMinor === null ? total : total + BigInt(item.lineTotalMinor)),
     BigInt(0),
@@ -276,6 +312,10 @@ function getGuestCart(items: CartItem[]): Cart {
     updatedAt: now,
     userId: 'guest',
   };
+}
+
+function getGuestCartCurrency(items: CartItem[]) {
+  return items[0]?.currency ?? 'VND';
 }
 
 interface CartLineItemProps {

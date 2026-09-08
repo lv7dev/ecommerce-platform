@@ -6,6 +6,7 @@ export const queryKeys = {
   },
   cart: {
     detail: ['cart'] as const,
+    quote: (query?: object) => ['cart', 'quote', query ?? {}] as const,
   },
   categories: {
     list: (query?: ListQuery) => ['categories', 'list', query ?? {}] as const,

@@ -1,7 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Currency, ProductStatus } from '../../generated/prisma/client';
 import { PrismaService } from '../../database/prisma/prisma.service';
-import { CartWithRelations } from './constants/cart.include';
+import { CartWithRelations, cartInclude } from './constants/cart.include';
 import { CartService } from './cart.service';
 
 describe('CartService', () => {
@@ -113,6 +113,7 @@ describe('CartService', () => {
       },
       productVariant: {
         findUnique: jest.fn(),
+        findMany: jest.fn(),
       },
     } as unknown as PrismaService;
 
@@ -166,6 +167,93 @@ describe('CartService', () => {
       variantId: variant.id,
       quantity: 2,
     });
+  });
+
+  it('quotes guest cart items from current product data', async () => {
+    const { service, prisma } = createService();
+    const prismaMock = prisma as unknown as {
+      productVariant: { findMany: jest.Mock };
+    };
+    const activeVariant = createVariant({
+      stock: 8,
+      reservedStock: 2,
+    });
+    const inactiveVariant = createVariant({
+      id: '618f4d7b-7ef3-4b77-9f35-05a34f968d7e',
+      isActive: false,
+      sku: 'BASIC-TEE-WHITE-M',
+    });
+
+    prismaMock.productVariant.findMany.mockResolvedValue([
+      activeVariant,
+      inactiveVariant,
+    ]);
+
+    await expect(
+      service.quoteGuestCart({
+        currency: Currency.VND,
+        items: [
+          {
+            quantity: 2,
+            variantId: activeVariant.id,
+          },
+          {
+            quantity: 1,
+            variantId: inactiveVariant.id,
+          },
+        ],
+      }),
+    ).resolves.toMatchObject({
+      currency: Currency.VND,
+      id: 'guest-cart',
+      items: [
+        {
+          availableStock: 6,
+          isAvailable: true,
+          quantity: 2,
+          unitAmountMinor: '249000',
+          variantId: activeVariant.id,
+        },
+        {
+          isAvailable: false,
+          quantity: 1,
+          unavailableReason: 'VARIANT_INACTIVE',
+          variantId: inactiveVariant.id,
+        },
+      ],
+      subtotalMinor: '747000',
+      userId: 'guest',
+    });
+    expect(prismaMock.productVariant.findMany).toHaveBeenCalledWith({
+      include: cartInclude.items.include.variant.include,
+      where: {
+        id: {
+          in: [activeVariant.id, inactiveVariant.id],
+        },
+      },
+    });
+  });
+
+  it('throws not found when quoting a missing guest cart variant', async () => {
+    const { service, prisma } = createService();
+    const prismaMock = prisma as unknown as {
+      productVariant: { findMany: jest.Mock };
+    };
+    const variant = createVariant();
+
+    prismaMock.productVariant.findMany.mockResolvedValue([]);
+
+    await expect(
+      service.quoteGuestCart({
+        currency: Currency.VND,
+        items: [
+          {
+            quantity: 1,
+            variantId: variant.id,
+          },
+        ],
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('rejects adding more than available stock', async () => {

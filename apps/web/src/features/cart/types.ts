@@ -16,6 +16,11 @@ export interface MergeCartInput {
   items: MergeCartItemInput[];
 }
 
+export interface QuoteCartInput {
+  currency?: string;
+  items: MergeCartItemInput[];
+}
+
 export interface CartItemOptionValue {
   optionCode: string;
   optionName: string;

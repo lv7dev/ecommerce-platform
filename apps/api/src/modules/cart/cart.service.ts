@@ -10,6 +10,7 @@ import { isPrismaError } from '../../common/helpers/prisma-error.helper';
 import { cartInclude } from './constants/cart.include';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { MergeCartDto } from './dto/merge-cart.dto';
+import { QuoteCartDto } from './dto/quote-cart.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 import { CartEntity } from './entities/cart.entity';
 import {
@@ -24,6 +25,66 @@ export class CartService {
 
   async findMine(userId: string): Promise<CartEntity> {
     return toCartEntity(await this.getOrCreateCart(userId));
+  }
+
+  async quoteGuestCart(quoteCartDto: QuoteCartDto): Promise<CartEntity> {
+    const itemsByVariantId = new Map<string, number>();
+
+    for (const item of quoteCartDto.items) {
+      itemsByVariantId.set(
+        item.variantId,
+        (itemsByVariantId.get(item.variantId) ?? 0) + item.quantity,
+      );
+    }
+
+    if (itemsByVariantId.size === 0) {
+      return toCartEntity({
+        id: 'guest-cart',
+        userId: 'guest',
+        currency: quoteCartDto.currency,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        items: [],
+      });
+    }
+
+    const variants = await this.prisma.productVariant.findMany({
+      where: {
+        id: {
+          in: [...itemsByVariantId.keys()],
+        },
+      },
+      include: cartInclude.items.include.variant.include,
+    });
+    const variantsById = new Map(
+      variants.map((variant) => [variant.id, variant]),
+    );
+    const now = new Date();
+
+    return toCartEntity({
+      id: 'guest-cart',
+      userId: 'guest',
+      currency: quoteCartDto.currency,
+      createdAt: now,
+      updatedAt: now,
+      items: [...itemsByVariantId].map(([variantId, quantity]) => {
+        const variant = variantsById.get(variantId);
+
+        if (!variant) {
+          throw new NotFoundException('Product variant not found');
+        }
+
+        return {
+          id: variantId,
+          cartId: 'guest-cart',
+          variantId,
+          quantity,
+          createdAt: now,
+          updatedAt: now,
+          variant,
+        };
+      }),
+    });
   }
 
   async addItem(

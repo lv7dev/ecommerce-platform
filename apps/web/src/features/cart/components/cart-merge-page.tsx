@@ -21,7 +21,7 @@ import { Input } from '@/shared/ui/input';
 import { Price } from '@/shared/ui/price';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { useToast } from '@/shared/ui/toast';
-import { cartQueryOptions } from '../queries';
+import { cartQueryOptions, guestCartQuoteQueryOptions } from '../queries';
 
 interface MergeOverride {
   quantity?: number;
@@ -44,6 +44,13 @@ export function CartMergePage() {
   const guestItems = useCartStore((state) => state.items);
   const clearGuestCart = useCartStore((state) => state.clear);
   const cartQuery = useQuery(cartQueryOptions());
+  const quoteCurrency = cartQuery.data?.currency ?? getCartCurrency(guestItems, cartQuery.data);
+  const guestCartQuoteQuery = useQuery(guestCartQuoteQueryOptions(guestItems, quoteCurrency));
+  const quotedGuestItems =
+    guestCartQuoteQuery.data?.items.map((item) => ({
+      ...item,
+      currency: guestCartQuoteQuery.data.currency,
+    })) ?? guestItems;
   const queryClient = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -52,8 +59,8 @@ export function CartMergePage() {
   const hasShownToast = useRef(false);
   const [overrides, setOverrides] = useState<Record<string, MergeOverride>>({});
   const candidates = useMemo(
-    () => buildMergeCandidates(guestItems, cartQuery.data?.items ?? []),
-    [cartQuery.data?.items, guestItems],
+    () => buildMergeCandidates(quotedGuestItems, cartQuery.data?.items ?? []),
+    [cartQuery.data?.items, quotedGuestItems],
   );
   const resolvedCandidates = candidates.map((candidate) => {
     const override = overrides[candidate.variantId];
@@ -108,7 +115,7 @@ export function CartMergePage() {
     if (
       hasShownToast.current ||
       cartQuery.isLoading ||
-      !guestItems.length ||
+      !quotedGuestItems.length ||
       !cartQuery.data?.items.length
     ) {
       return;
@@ -120,7 +127,7 @@ export function CartMergePage() {
       title: 'Cart merge needed',
       variant: 'success',
     });
-  }, [cartQuery.data?.items.length, cartQuery.isLoading, guestItems.length, showToast]);
+  }, [cartQuery.data?.items.length, cartQuery.isLoading, quotedGuestItems.length, showToast]);
 
   function updateCandidate(variantId: string, override: MergeOverride) {
     setOverrides((currentOverrides) => ({
@@ -132,7 +139,7 @@ export function CartMergePage() {
     }));
   }
 
-  if (cartQuery.isLoading) {
+  if (cartQuery.isLoading || (guestItems.length > 0 && guestCartQuoteQuery.isLoading)) {
     return <CartMergeSkeleton />;
   }
 
@@ -204,11 +211,18 @@ export function CartMergePage() {
         </div>
       ) : null}
 
+      {guestCartQuoteQuery.isError ? (
+        <div className="mb-6 rounded-md border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-muted-foreground">
+          We could not refresh the local cart from current product data. The merge will still be
+          validated before it is saved.
+        </div>
+      ) : null}
+
       <div className="grid gap-6 xl:grid-cols-3">
         <CartSnapshotPanel
-          currency={getCartCurrency(guestItems, cartQuery.data)}
+          currency={quoteCurrency}
           icon={HardDrive}
-          items={guestItems}
+          items={quotedGuestItems}
           title="Local cart before login"
         />
         <CartSnapshotPanel
@@ -233,7 +247,7 @@ export function CartMergePage() {
               <MergeCandidateRow
                 key={candidate.variantId}
                 candidate={candidate}
-                currency={getCartCurrency(guestItems, cartQuery.data)}
+                currency={quoteCurrency}
                 disabled={mergeMutation.isPending}
                 onQuantityChange={(quantity) => updateCandidate(candidate.variantId, { quantity })}
                 onSelectedChange={(selected) => updateCandidate(candidate.variantId, { selected })}
@@ -256,8 +270,8 @@ export function CartMergePage() {
               <span className="font-medium text-foreground">
                 <Price
                   amountMinor={resolvedSubtotalMinor.toString()}
-                  currency={getCartCurrency(guestItems, cartQuery.data)}
-                  locale={getCartCurrency(guestItems, cartQuery.data) === 'VND' ? 'vi-VN' : 'en-US'}
+                  currency={quoteCurrency}
+                  locale={quoteCurrency === 'VND' ? 'vi-VN' : 'en-US'}
                 />
               </span>
             </div>
