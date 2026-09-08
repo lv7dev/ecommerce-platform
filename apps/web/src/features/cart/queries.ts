@@ -1,13 +1,12 @@
 import { queryOptions } from '@tanstack/react-query';
 import { queryKeys } from '@/shared/query/keys';
-import { getMe } from './api';
+import { getCart } from './api';
 
-export function currentUserQueryOptions(enabled = true) {
+export function cartQueryOptions(enabled = true) {
   return queryOptions({
     enabled,
-    queryFn: getMe,
-    queryKey: queryKeys.auth.me,
+    queryFn: getCart,
+    queryKey: queryKeys.cart.detail,
     retry: false,
-    staleTime: 60_000,
   });
 }

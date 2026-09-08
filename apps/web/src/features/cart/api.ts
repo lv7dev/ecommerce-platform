@@ -1,0 +1,33 @@
+import { apiRequestWithSessionRefresh } from '@/features/auth/api';
+import { apiEndpoints } from '@/shared/api/endpoints';
+import type { AddCartItemInput, Cart, UpdateCartItemInput } from './types';
+
+export function getCart() {
+  return apiRequestWithSessionRefresh<Cart>(apiEndpoints.cart.root);
+}
+
+export function addCartItem(input: AddCartItemInput) {
+  return apiRequestWithSessionRefresh<Cart>(apiEndpoints.cart.items, {
+    body: input,
+    method: 'POST',
+  });
+}
+
+export function updateCartItem(itemId: string, input: UpdateCartItemInput) {
+  return apiRequestWithSessionRefresh<Cart>(apiEndpoints.cart.item(itemId), {
+    body: input,
+    method: 'PATCH',
+  });
+}
+
+export function removeCartItem(itemId: string) {
+  return apiRequestWithSessionRefresh<Cart>(apiEndpoints.cart.item(itemId), {
+    method: 'DELETE',
+  });
+}
+
+export function clearCart() {
+  return apiRequestWithSessionRefresh<Cart>(apiEndpoints.cart.root, {
+    method: 'DELETE',
+  });
+}

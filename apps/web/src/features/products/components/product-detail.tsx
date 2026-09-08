@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, CircleCheck, CircleX, Package } from 'lucide-react';
+import { AddToCartButton } from '@/features/cart/components/add-to-cart-button';
 import { getApiErrorMessage } from '@/shared/api/errors';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
@@ -11,14 +12,14 @@ import { ErrorState } from '@/shared/ui/error-state';
 import { Price } from '@/shared/ui/price';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { productBySlugQueryOptions } from '../queries';
-import { getActivePrice, getLocalizedTranslation, getPrimaryVariant } from '../product-view';
-import type {
-  Currency,
-  Locale,
-  Product,
-  ProductEmbeddedVariant,
-  ProductVariantOptionValueSummary,
-} from '../types';
+import {
+  formatVariantName,
+  getActivePrice,
+  getLocalizedTranslation,
+  getPrimaryVariant,
+  toGuestCartItem,
+} from '../product-view';
+import type { Currency, Locale, Product, ProductEmbeddedVariant } from '../types';
 
 const DEFAULT_LOCALE: Locale = 'vi';
 const DEFAULT_CURRENCY: Currency = 'VND';
@@ -228,7 +229,7 @@ function ProductDetailContent({
                 >
                   <span className="min-w-0">
                     <span className="block text-sm font-medium text-foreground">
-                      {formatVariantName(product, variant, locale)}
+                      {formatVariantName(product, variant, locale) ?? variant.sku}
                     </span>
                     <span className="mt-1 block text-xs text-muted-foreground">
                       {variant.availableStock > 0
@@ -252,6 +253,16 @@ function ProductDetailContent({
             <InventoryStat label="Total stock" value={selectedVariant?.stock ?? 0} />
             <InventoryStat label="Status" value={isPurchasable ? 'Available' : 'Unavailable'} />
           </div>
+
+          <AddToCartButton
+            available={isPurchasable}
+            className="w-full sm:w-auto"
+            guestItem={
+              selectedVariant ? toGuestCartItem(product, selectedVariant, locale, currency) : null
+            }
+            size="lg"
+            variantId={selectedVariant?.id ?? null}
+          />
 
           {translation?.description ? (
             <section className="space-y-3 border-t pt-6">
@@ -309,48 +320,5 @@ function ProductDetailSkeleton() {
         </div>
       </div>
     </main>
-  );
-}
-
-function formatVariantName(product: Product, variant: ProductEmbeddedVariant, locale: Locale) {
-  const optionValues = sortOptionValues(product, variant.optionValues);
-
-  if (!optionValues.length) {
-    return variant.sku;
-  }
-
-  return optionValues
-    .map((optionValue) => {
-      const optionName = getOptionName(product, optionValue.optionCode, locale);
-      const valueName =
-        optionValue.translations.find((translation) => translation.locale === locale)?.value ??
-        optionValue.translations[0]?.value ??
-        optionValue.code;
-
-      return `${optionName}: ${valueName}`;
-    })
-    .join(', ');
-}
-
-function sortOptionValues(product: Product, optionValues: ProductVariantOptionValueSummary[]) {
-  return [...optionValues].sort((left, right) => {
-    const leftIndex = product.options.findIndex((option) => option.code === left.optionCode);
-    const rightIndex = product.options.findIndex((option) => option.code === right.optionCode);
-
-    return normalizeOptionIndex(leftIndex) - normalizeOptionIndex(rightIndex);
-  });
-}
-
-function normalizeOptionIndex(index: number) {
-  return index === -1 ? Number.MAX_SAFE_INTEGER : index;
-}
-
-function getOptionName(product: Product, optionCode: string, locale: Locale) {
-  const option = product.options.find((item) => item.code === optionCode);
-
-  return (
-    option?.translations.find((translation) => translation.locale === locale)?.name ??
-    option?.translations[0]?.name ??
-    optionCode
   );
 }

@@ -13,6 +13,7 @@ export const apiEndpoints = {
   },
   cart: {
     items: '/cart/items',
+    item: (itemId: string) => `/cart/items/${itemId}`,
     root: '/cart',
   },
   categories: {

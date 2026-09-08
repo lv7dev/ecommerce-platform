@@ -17,6 +17,7 @@ import type {
   ResetPasswordInput,
   VerifyEmailInput,
 } from './schemas';
+import { clearAuthSessionHint } from './session-hint';
 
 export function login(input: LoginInput) {
   return apiRequest<AuthSession>(apiEndpoints.auth.login, {
@@ -75,6 +76,7 @@ export async function getMe() {
     return await apiRequestWithSessionRefresh<AuthenticatedUser>(apiEndpoints.auth.me);
   } catch (error) {
     if (isUnauthorizedError(error)) {
+      clearAuthSessionHint();
       return null;
     }
 

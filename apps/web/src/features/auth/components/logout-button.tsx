@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { queryKeys } from '@/shared/query/keys';
 import { Button, type ButtonProps } from '@/shared/ui/button';
 import { logout } from '../api';
+import { clearAuthSessionHint } from '../session-hint';
 
 export function LogoutButton({
   children = 'Sign out',
@@ -19,8 +20,10 @@ export function LogoutButton({
   const logoutMutation = useMutation({
     mutationFn: logout,
     onSettled: async () => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.auth.me });
+      clearAuthSessionHint();
       queryClient.setQueryData(queryKeys.auth.me, null);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.auth.me });
+      queryClient.removeQueries({ queryKey: queryKeys.cart.detail });
       router.push('/');
       router.refresh();
     },

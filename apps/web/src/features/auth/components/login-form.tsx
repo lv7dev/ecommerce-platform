@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { LogIn } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { getApiErrorMessage } from '@/shared/api/errors';
+import { prepareGuestCartAfterAuth } from '@/features/cart/merge';
 import { queryKeys } from '@/shared/query/keys';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
@@ -15,6 +16,7 @@ import { login } from '../api';
 import { toAuthenticatedUser } from '../auth-user';
 import { getSafeRedirectPath } from '../redirect';
 import { loginSchema, type LoginInput } from '../schemas';
+import { setAuthSessionHint } from '../session-hint';
 import { FieldError } from './field-error';
 
 export function LoginForm() {
@@ -31,8 +33,17 @@ export function LoginForm() {
   });
   const loginMutation = useMutation({
     mutationFn: login,
-    onSuccess: (session) => {
+    onSuccess: async (session) => {
+      setAuthSessionHint();
       queryClient.setQueryData(queryKeys.auth.me, toAuthenticatedUser(session.user));
+      const mergeResult = await prepareGuestCartAfterAuth(queryClient);
+
+      if (mergeResult.status === 'review') {
+        router.replace(`/cart/merge?redirectTo=${encodeURIComponent(redirectTo)}`);
+        router.refresh();
+        return;
+      }
+
       router.replace(redirectTo);
       router.refresh();
     },
@@ -82,7 +93,9 @@ export function LoginForm() {
       <p className="text-center text-sm text-muted-foreground">
         New customer?{' '}
         <Button asChild variant="link">
-          <Link href="/register">Create an account</Link>
+          <Link href={`/register?redirectTo=${encodeURIComponent(redirectTo)}`}>
+            Create an account
+          </Link>
         </Button>
       </p>
     </form>

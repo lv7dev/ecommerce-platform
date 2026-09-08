@@ -3,9 +3,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { UserPlus } from 'lucide-react';
 import { useForm } from 'react-hook-form';
+import { prepareGuestCartAfterAuth } from '@/features/cart/merge';
 import { getApiErrorMessage } from '@/shared/api/errors';
 import { queryKeys } from '@/shared/query/keys';
 import { Button } from '@/shared/ui/button';
@@ -13,12 +14,16 @@ import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { register } from '../api';
 import { toAuthenticatedUser } from '../auth-user';
+import { getSafeRedirectPath } from '../redirect';
 import { registerSchema, type RegisterFormValues } from '../schemas';
+import { setAuthSessionHint } from '../session-hint';
 import { FieldError } from './field-error';
 
 export function RegisterForm() {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = getSafeRedirectPath(searchParams.get('redirectTo'));
   const form = useForm<RegisterFormValues>({
     defaultValues: {
       confirmPassword: '',
@@ -35,9 +40,18 @@ export function RegisterForm() {
         name: name?.trim() ? name.trim() : undefined,
         password,
       }),
-    onSuccess: (session) => {
+    onSuccess: async (session) => {
+      setAuthSessionHint();
       queryClient.setQueryData(queryKeys.auth.me, toAuthenticatedUser(session.user));
-      router.replace('/products');
+      const mergeResult = await prepareGuestCartAfterAuth(queryClient);
+
+      if (mergeResult.status === 'review') {
+        router.replace(`/cart/merge?redirectTo=${encodeURIComponent(redirectTo)}`);
+        router.refresh();
+        return;
+      }
+
+      router.replace(redirectTo);
       router.refresh();
     },
   });

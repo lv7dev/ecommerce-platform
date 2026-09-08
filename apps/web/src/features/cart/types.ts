@@ -1,27 +1,47 @@
-export interface CartItem {
-  id: string;
-  imageUrl?: string;
-  name: string;
-  price: number;
-  productId: string;
+export interface AddCartItemInput {
   quantity: number;
-  slug?: string;
   variantId: string;
-  variantName?: string;
 }
 
-export interface CartSummary {
-  currency: string;
-  discountTotal: number;
-  itemCount: number;
-  shippingTotal: number;
-  subtotal: number;
-  taxTotal: number;
-  total: number;
+export interface UpdateCartItemInput {
+  quantity: number;
+}
+
+export interface CartItemOptionValue {
+  optionCode: string;
+  optionName: string;
+  valueCode: string;
+  valueName: string;
+}
+
+export interface CartItem {
+  availableStock: number;
+  createdAt: string;
+  currency?: string;
+  id: string;
+  imageUrl: string | null;
+  isAvailable: boolean;
+  lineTotalMinor: string | null;
+  optionValues: CartItemOptionValue[];
+  productId: string;
+  productName: string;
+  quantity: number;
+  reservedStock: number;
+  sku: string;
+  stock: number;
+  unavailableReason: string | null;
+  unitAmountMinor: string | null;
+  updatedAt: string;
+  variantId: string;
+  variantName: string | null;
 }
 
 export interface Cart {
-  id?: string;
+  createdAt: string;
+  currency: string;
+  id: string;
   items: CartItem[];
-  summary: CartSummary;
+  subtotalMinor: string;
+  updatedAt: string;
+  userId: string;
 }

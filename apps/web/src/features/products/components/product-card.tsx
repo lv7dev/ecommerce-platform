@@ -1,10 +1,12 @@
+'use client';
+
 import Link from 'next/link';
-import { Package, ShoppingCart } from 'lucide-react';
+import { Package } from 'lucide-react';
+import { AddToCartButton } from '@/features/cart/components/add-to-cart-button';
 import { Badge } from '@/shared/ui/badge';
-import { Button } from '@/shared/ui/button';
 import { Price } from '@/shared/ui/price';
 import type { Currency, Locale, Product } from '../types';
-import { toProductCardViewModel } from '../product-view';
+import { getPrimaryVariant, toGuestCartItem, toProductCardViewModel } from '../product-view';
 
 interface ProductCardProps {
   currency?: Currency;
@@ -14,7 +16,8 @@ interface ProductCardProps {
 
 export function ProductCard({ currency = 'VND', locale = 'vi', product }: ProductCardProps) {
   const productView = toProductCardViewModel(product, locale, currency);
-  const isUnavailable = productView.availableStock <= 0;
+  const primaryVariant = getPrimaryVariant(product.variants, currency);
+  const isUnavailable = productView.availableStock <= 0 || productView.priceAmountMinor === null;
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm transition-colors hover:border-primary/40">
@@ -71,10 +74,16 @@ export function ProductCard({ currency = 'VND', locale = 'vi', product }: Produc
               {productView.variantCount} variant{productView.variantCount === 1 ? '' : 's'}
             </p>
           </div>
-          <Button size="sm" disabled={isUnavailable}>
-            <ShoppingCart className="size-4" />
-            {isUnavailable ? 'Sold out' : 'Add'}
-          </Button>
+          <AddToCartButton
+            available={!isUnavailable}
+            availableLabel="Add"
+            guestItem={
+              primaryVariant ? toGuestCartItem(product, primaryVariant, locale, currency) : null
+            }
+            size="sm"
+            soldOutLabel="Sold out"
+            variantId={productView.variantId}
+          />
         </div>
       </div>
     </article>
